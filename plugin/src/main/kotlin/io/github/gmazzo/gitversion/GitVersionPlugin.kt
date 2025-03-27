@@ -8,6 +8,7 @@ import org.gradle.api.file.Directory
 import org.gradle.api.initialization.Settings
 import org.gradle.api.internal.GradleInternal
 import org.gradle.api.invocation.Gradle
+import org.gradle.api.logging.Logging
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.kotlin.dsl.create
@@ -16,6 +17,8 @@ import org.gradle.kotlin.dsl.typeOf
 class GitVersionPlugin @Inject constructor(
     private val providers: ProviderFactory,
 ) : Plugin<Any> {
+
+    private val logger = Logging.getLogger(GitVersionPlugin::class.java)
 
     override fun apply(target: Any) = when (target) {
         is Project -> target.configure(target::allprojects)
@@ -35,16 +38,9 @@ class GitVersionPlugin @Inject constructor(
                 .convention("v")
                 .finalizeValueOnRead()
 
-            versionProducer
-                .convention(GitVersionRegexBasedProducer.Snapshot)
-                .finalizeValueOnRead()
-
-            val command = gitRootDirectory.zip(tagPrefix.orElse(""), ::Pair).flatMap { (rootDir, prefix) ->
-                rootDir.command("git", "describe", "--tags", "--always", "--match", "$prefix*")
-            }
 
             version
-                .convention(versionProducer.zip(command, GitVersionProducer::versionFor))
+                .convention(tagBasedVersion())
                 .finalizeValueOnRead()
 
         }
@@ -87,16 +83,36 @@ class GitVersionPlugin @Inject constructor(
             else -> throw IllegalArgumentException("Unsupported target object: $this")
         }
 
-    private fun Directory.command(vararg commandLine: String) = providers
-        .exec {
-            workingDir = this@command.asFile
-            commandLine(*commandLine)
-            isIgnoreExitValue = true
-        }
-        .let { exec ->
-            exec.result
-                .map { if (it.exitValue == 0) exec.standardOutput else exec.standardError }
-                .map { it.asText.get().trim() }
+    private fun GitVersionExtension.tagBasedVersion() = gitRootDirectory
+        .zip(tagPrefix.orElse(""), ::Pair)
+        .flatMap { (rootDir, prefix) ->
+            with(rootDir) {
+                val baseCommand = arrayOf("git", "describe", "--tags", "--match", "$prefix*")
+
+                command(baseCommand, "--exact-match") { null }
+                    .orElse(command(baseCommand, "--abbrev=0") {
+                        logger.warn("failed to compute git version (no tags yet?): $it")
+                        null
+                    }.map { "$it-SNAPSHOT" })
+                    .map { it.removePrefix(prefix) }
+                    .orElse("0.1.0-SNAPSHOT")
+            }
         }
 
+    private fun Directory.command(
+        commandLine: Array<String>,
+        vararg args: String,
+        onError: (String) -> String?,
+    ) = providers.exec {
+        workingDir = this@command.asFile
+        commandLine(commandLine.asList() + args)
+        isIgnoreExitValue = true
+    }.let { exec ->
+        exec.result.map {
+            when (it.exitValue) {
+                0 -> exec.standardOutput.asText.get().trim()
+                else -> onError(exec.standardError.asText.get().trim())
+            }
+        }
+    }
 }

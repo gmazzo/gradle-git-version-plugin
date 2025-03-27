@@ -18,9 +18,6 @@ internal class GitVersionExtensionReflected(
     private val tagPrefixGetter =
         delegate.javaClass.getMethod("getTagPrefix")
 
-    private var versionProducerGetter =
-        delegate.javaClass.getMethod("getVersionProducer")
-
     private val versionGetter =
         delegate.javaClass.getMethod("getVersion")
 
@@ -29,9 +26,6 @@ internal class GitVersionExtensionReflected(
 
     override val tagPrefix: Property<String>
         get() = tagPrefixGetter.invoke(delegate) as Property<String>
-
-    override val versionProducer: Property<GitVersionProducer>
-        get() = versionProducerGetter.invoke(delegate) as Property<GitVersionProducer>
 
     override val version: Property<String>
         get() = versionGetter.invoke(delegate) as Property<String>

@@ -9,8 +9,6 @@ abstract class GitVersionExtension() {
 
     abstract val tagPrefix: Property<String>
 
-    abstract val versionProducer: Property<GitVersionProducer>
-
     abstract val version: Property<String>
 
     override fun toString() = version.get().toString()

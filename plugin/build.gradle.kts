@@ -10,10 +10,11 @@ plugins {
 
 group = "io.github.gmazzo.gitversion"
 description = "An opinionated Gradle version provider based on Git tags"
-//version = scmVersion.version
+version = "1.0.0"
 
 java.toolchain.languageVersion.set(JavaLanguageVersion.of(libs.versions.java.get()))
 samWithReceiver.annotation(HasImplicitReceiver::class.qualifiedName!!)
+kotlin.compilerOptions.freeCompilerArgs.add("-Xjvm-default=all")
 
 val originUrl = providers
     .exec { commandLine("git", "remote", "get-url", "origin") }

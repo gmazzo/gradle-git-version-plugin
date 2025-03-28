@@ -22,7 +22,7 @@ plugins {
 Then `project.version` on all projects will be set to the latest tag reachable from the current commit.
 
 ## Version computing
-The plugin will rely on the command `git describe --tags --always --match <tagPrefix>*` to compute the version. Than means:
-1) Will take the closest tag reachable from the current commit, matching the given prefix.
-2) If the current commit is tagged, the version will be the tag itself.
-3) If the current commit is not tagged or the working tree is dirty, the version will be the tag name followed by `-SNAPSHOT`.
+The version is computed using `git describe` commands as follows:
+1) If the current commit is tagged, the version is the tag name.
+2) If the current commit is not tagged, the version is the tag name of the latest tag reachable from the current commit suffixed with `-SNAPSHOT`.
+3) If there are no tags, the version is `0.1.0-SNAPSHOT`.

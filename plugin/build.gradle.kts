@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.mavenPublish)
     alias(libs.plugins.gradle.pluginPublish)
     alias(libs.plugins.publicationsReport)
-    jacoco
+    alias(libs.plugins.jacoco.testkit)
 }
 
 group = "io.github.gmazzo.gitversion"
@@ -71,6 +71,8 @@ dependencies {
 
     testImplementation(gradleKotlinDsl())
     testImplementation(gradleTestKit())
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.params)
 }
 
 testing.suites.withType<JvmTestSuite> {
@@ -78,6 +80,7 @@ testing.suites.withType<JvmTestSuite> {
 }
 
 tasks.test {
+    environment("TEMP_DIR", temporaryDir)
     finalizedBy(tasks.jacocoTestReport)
 }
 

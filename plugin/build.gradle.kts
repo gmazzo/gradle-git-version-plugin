@@ -25,7 +25,7 @@ gradlePlugin {
     vcsUrl = originUrl
 
     plugins {
-        create("import-classes") {
+        create("gitversion") {
             id = "io.github.gmazzo.gitversion"
             displayName = name
             implementationClass = "io.github.gmazzo.gitversion.GitVersionPlugin"

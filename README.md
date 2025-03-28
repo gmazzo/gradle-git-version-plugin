@@ -15,7 +15,12 @@ Apply the plugin:
 
 ```kotlin
 plugins {
-    id("io.github.gmazzo.gitversion") version "<latest>"
+  id("io.github.gmazzo.gitversion") version "<latest>"
+
+  gitVersion {
+    tagPrefix = "v" // Optional, default is "v"
+    initialVersion = "0.1.0-SNAPSHOT" // Optional, default is "0.1.0-SNAPSHOT"
+  }
 }
 ```
 
@@ -26,3 +31,46 @@ The version is computed using `git describe` commands as follows:
 1) If the current commit is tagged, the version is the tag name.
 2) If the current commit is not tagged, the version is the tag name of the latest tag reachable from the current commit suffixed with `-SNAPSHOT`.
 3) If there are no tags, the version is `0.1.0-SNAPSHOT`.
+
+## `includedBuild` support
+This plugin can be applied at `build.gradle` or `settings.gradle` script.
+If you apply it as well in inside an `includedBuild`'s build script, the same version instance will be configured to it.
+
+## Multi-version support
+This plugin can also be used to provide independent versioning on modules hierarchies.
+To archive this, you should **avoid** applying it at the root `build.gradle` (or at `settings.gradle`), and apply it only on the submodules that you want to version instead:
+
+For insance, given the following project structure:
+```
+build.gradle
+settings.gradle
+foo/build.gradle
+bar/build.gradle
+bar/api/build.gradle
+bar/impl/build.gradle
+```
+
+You can version `foo` and `bar` independently by applying the plugin only in their respective `build.gradle` files:
+```kotlin
+// at foo/build.gradle
+plugins {
+  id("io.github.gmazzo.gitversion") version "<latest>"
+
+  gitVersion {
+    tagPrefix = "foo-v"
+  }
+}
+```
+and
+```kotlin
+// at bar/build.gradle
+plugins {
+  id("io.github.gmazzo.gitversion") version "<latest>"
+
+  gitVersion {
+    tagPrefix = "bar-v"
+  }
+}
+```
+> [!NOTE]
+> Note that `bar`, `bar:api` and `bar:impl` will all share the same version

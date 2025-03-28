@@ -6,11 +6,11 @@ plugins {
     alias(libs.plugins.gradle.pluginPublish)
     alias(libs.plugins.publicationsReport)
     alias(libs.plugins.jacoco.testkit)
+    id("io.github.gmazzo.gitversion") version "+" // self reference, it will use the latest published version
 }
 
 group = "io.github.gmazzo.gitversion"
 description = "An opinionated Gradle version provider based on Git tags"
-version = "1.0.0"
 
 java.toolchain.languageVersion.set(JavaLanguageVersion.of(libs.versions.java.get()))
 samWithReceiver.annotation(HasImplicitReceiver::class.qualifiedName!!)

@@ -21,14 +21,15 @@ abstract class GitVersionTagBasedValueSource @Inject constructor(
 ) : ValueSource<String, GitVersionTagBasedValueSource.Params> {
     private val logger = Logging.getLogger(GitVersionTagBasedValueSource::class.java)
 
-    override fun obtain() = with(parameters) {
+    override fun obtain(): String = with(parameters) {
         val prefix = tagPrefix.getOrElse("")
         val tag = command("git", "describe", "--tags", "--match", "$prefix*", "--exact-match")
             ?: command("git", "describe", "--tags", "--match", "$prefix*", "--abbrev=0") {
                 logger.warn("failed to compute git version (no tags yet?): $it")
-            }?.let { "$it-SNAPSHOT" }
+            }?.let { "$it$SNAPSHOT_SUFFIX" }
 
-        tag?.removePrefix(prefix) ?: parameters.initialVersion.get()
+        val candidate = tag?.removePrefix(prefix) ?: parameters.initialVersion.get()
+        if (forceSnapshot.get() && !candidate.endsWith(SNAPSHOT_SUFFIX)) "$candidate$SNAPSHOT_SUFFIX" else candidate
     }
 
     protected fun command(vararg args: String, onError: (String) -> Unit = {}): String? {
@@ -55,11 +56,17 @@ abstract class GitVersionTagBasedValueSource @Inject constructor(
 
         val initialVersion: Property<String>
 
+        val forceSnapshot: Property<Boolean>
+
         fun from(extension: GitVersionExtension) = apply {
             tagPrefix.set(extension.tagPrefix)
             initialVersion.set(extension.initialVersion)
         }
 
+    }
+
+    companion object {
+        const val SNAPSHOT_SUFFIX = "-SNAPSHOT"
     }
 
 }

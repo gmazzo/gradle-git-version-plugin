@@ -5,15 +5,16 @@ plugins {
     alias(libs.plugins.mavenPublish)
     alias(libs.plugins.gradle.pluginPublish)
     alias(libs.plugins.publicationsReport)
-    jacoco
+    alias(libs.plugins.jacoco.testkit)
 }
 
 group = "io.github.gmazzo.gitversion"
 description = "An opinionated Gradle version provider based on Git tags"
-//version = scmVersion.version
+version = "1.0.0"
 
 java.toolchain.languageVersion.set(JavaLanguageVersion.of(libs.versions.java.get()))
 samWithReceiver.annotation(HasImplicitReceiver::class.qualifiedName!!)
+kotlin.compilerOptions.freeCompilerArgs.add("-Xjvm-default=all")
 
 val originUrl = providers
     .exec { commandLine("git", "remote", "get-url", "origin") }
@@ -70,6 +71,8 @@ dependencies {
 
     testImplementation(gradleKotlinDsl())
     testImplementation(gradleTestKit())
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.params)
 }
 
 testing.suites.withType<JvmTestSuite> {
@@ -77,6 +80,7 @@ testing.suites.withType<JvmTestSuite> {
 }
 
 tasks.test {
+    environment("TEMP_DIR", temporaryDir)
     finalizedBy(tasks.jacocoTestReport)
 }
 

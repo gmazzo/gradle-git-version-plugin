@@ -1,209 +1,245 @@
+@file:Suppress("EnumEntryName")
+
 package io.github.gmazzo.gitversion
 
-import org.gradle.api.Action
-import org.gradle.api.artifacts.ModuleDependency
-import org.gradle.api.attributes.LibraryElements.JAR
-import org.gradle.api.attributes.LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE
-import org.gradle.api.problems.Problem
-import org.gradle.api.problems.ProblemId
-import org.gradle.api.problems.ProblemSpec
-import org.gradle.api.problems.internal.AdditionalDataBuilderFactory
-import org.gradle.api.problems.internal.InternalProblem
-import org.gradle.api.problems.internal.InternalProblemBuilder
-import org.gradle.api.problems.internal.InternalProblemReporter
-import org.gradle.api.problems.internal.InternalProblemSpec
-import org.gradle.api.problems.internal.InternalProblems
-import org.gradle.api.problems.internal.ProblemsProgressEventEmitterHolder
-import org.gradle.api.tasks.SourceSetContainer
-import org.gradle.internal.operations.OperationIdentifier
-import org.gradle.internal.reflect.Instantiator
-import org.gradle.kotlin.dsl.apply
-import org.gradle.kotlin.dsl.dependencies
-import org.gradle.kotlin.dsl.get
-import org.gradle.kotlin.dsl.named
-import org.gradle.kotlin.dsl.repositories
-import org.gradle.kotlin.dsl.the
-import org.gradle.testfixtures.ProjectBuilder
+import java.io.File
+import org.gradle.testkit.runner.GradleRunner
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
-import proguard.ConfigurationConstants.DONT_NOTE_OPTION
-import proguard.ConfigurationConstants.IGNORE_WARNINGS_OPTION
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class GitVersionPluginTest {
+    private val gitVersionPlugin = "io.github.gmazzo.gitversion"
+    private val tempDir = File(System.getenv("TEMP_DIR"), "project")
 
-    @MethodSource("testCases")
-    @ParameterizedTest
-    fun `plugin can be applied, and classes are resolved`(
-        plugin: String,
-        dependency: CharSequence,
-        classToKeep: String,
-        expectedImportedJar: String,
-        libraries: Set<String>,
-    ): Unit = with(ProjectBuilder.builder().build()) {
-        gradleIssue31862Workaround()
+    @BeforeAll
+    fun setup() {
+        tempDir.deleteRecursively()
+    }
 
-        apply(plugin = "io.github.gmazzo.gitversion")
-        apply(plugin = plugin)
-
-        repositories {
-            mavenCentral()
-            google()
-        }
-
-        val main = the<SourceSetContainer>().maybeCreate("main")
-
-        configure<ImportClassesExtension> {
-            repackageTo.value("org.test.imported")
-            keep(classToKeep)
-            extraOptions.value(setOf(DONT_NOTE_OPTION, IGNORE_WARNINGS_OPTION))
-        }
-
-        dependencies {
-            "importClasses"(dependency).apply {
-                (this as ModuleDependency).isTransitive = dependency !is NonTransitive
+    @ParameterizedTest(name = "{0}, {1}, {2}")
+    @MethodSource("testData")
+    fun `plugin can be applied in a simple project`(layout: BuildLayout, applyAt: ApplyAt, tags: Tags) =
+        runTest(layout, applyAt, tags) {
+            val expectedVersion = when (applyAt) {
+                ApplyAt.childProjects -> "unspecified"
+                else -> when (tags) {
+                    Tags.noneMatching -> "0.1.0-SNAPSHOT"
+                    Tags.previousInHistory -> "1.2.3-SNAPSHOT"
+                    Tags.isHead -> "2.0.5"
+                }
             }
-            libraries.forEach { "importClassesLibraries"(it) }
-        }
 
-        project.getTasksByName("tasks", false) //internally it calls project.evaluate()
-
-        val paths = main.output.classesDirs.files
-            .mapTo(linkedSetOf()) { it.toRelativeString(projectDir) }
-
-        assertEquals(
-            setOfNotNull(
-                "build/classes/java/main",
-                "build/classes/groovy/main".takeIf { plugin == "groovy" },
-                "build/classes/kotlin/main".takeIf { plugin == "kotlin" },
-                "build/imported/main/classes",
-            ),
-            paths,
-        )
-
-        val importedClasses = configurations["importClasses"].incoming
-            .artifactView {
-                attributes.attribute(
-                    LIBRARY_ELEMENTS_ATTRIBUTE,
-                    objects.named("$JAR+imported-main")
+            val expectedVersions = when (layout) {
+                BuildLayout.singleModule -> mapOf(
+                    "version.txt" to expectedVersion
                 )
+
+                BuildLayout.multiModule -> when (applyAt) {
+                    ApplyAt.childProjects -> mapOf(
+                        "version.txt" to "unspecified",
+                        "module1/version.txt" to "1.0.0-SNAPSHOT",
+                        "module2/version.txt" to "2.0.0",
+                    )
+
+                    else -> mapOf(
+                        "version.txt" to expectedVersion,
+                        "module1/version.txt" to expectedVersion,
+                        "module2/version.txt" to expectedVersion,
+                    )
+                }
+
+                BuildLayout.includedBuild -> when (applyAt) {
+                    ApplyAt.childProjects -> mapOf(
+                        "version.txt" to "unspecified",
+                        "module1/version.txt" to "1.0.0-SNAPSHOT",
+                        "module2/version.txt" to "2.0.0",
+                        "build-logic/version.txt" to "unspecified",
+                    )
+
+                    else -> mapOf(
+                        "version.txt" to expectedVersion,
+                        "module1/version.txt" to expectedVersion,
+                        "module2/version.txt" to expectedVersion,
+                        "build-logic/version.txt" to expectedVersion,
+                    )
+                }
             }
-            .files
-            .mapTo(linkedSetOf()) { it.name }
 
-        assertEquals(setOf(expectedImportedJar), importedClasses)
-    }
+            GradleRunner.create()
+                .withPluginClasspath()
+                .withProjectDir(rootDir)
+                .withArguments(
+                    listOfNotNull(
+                        "storeVersion",
+                        "build-logic:storeVersion".takeIf { layout == BuildLayout.includedBuild }),
+                )
+                .forwardOutput()
+                .build()
 
-    fun testCases(): List<Array<out Any?>> =
-        sequenceOf("java", "java-library", "groovy", "kotlin").flatMap { plugin ->
-            sequenceOf(
-                arrayOf(
-                    plugin,
-                    "org.apache.commons:commons-lang3:3.14.0",
-                    "org.apache.commons.lang3.StringUtils",
-                    "commons-lang3-3.14.0-imported.jar",
-                    emptySet<String>(),
-                ),
-                arrayOf(
-                    plugin,
-                    "org.eclipse.jgit:org.eclipse.jgit:6.10.0.202406032230-r",
-                    "org.eclipse.jgit.ignore.FastIgnoreRule",
-                    "org.eclipse.jgit-6.10.0.202406032230-r-imported.jar",
-                    setOf("org.slf4j:slf4j-api:2.0.16"),
-                ),
-                arrayOf(
-                    plugin,
-                    NonTransitive("com.android.tools.build:gradle:8.7.3"),
-                    "com.android.build.gradle.internal.dependency.AarToClassTransform",
-                    "gradle-8.7.3-imported.jar",
-                    emptySet<String>(),
-                ),
+            val actualVersions = rootDir.walkTopDown()
+                .filter { it.name == "version.txt" }
+                .associateBy({ it.toRelativeString(rootDir) }, { it.readText() })
+
+            assertEquals(expectedVersions, actualVersions)
+        }
+
+    private fun runTest(layout: BuildLayout, applyAt: ApplyAt, tags: Tags, block: Scenario.() -> Unit) {
+        val rootDir = tempDir.resolve(layout.name).resolve(applyAt.name).resolve(tags.name)
+
+        rootDir.mkdirs()
+        rootDir.command("git", "init")
+        rootDir.command("git", "config", "user.email", "test@test.org")
+        rootDir.command("git", "config", "user.name", "test")
+        rootDir.command("git", "commit", "--allow-empty", "-m", "Initial commit")
+        rootDir.command("git", "commit", "--allow-empty", "-m", "Second commit")
+        rootDir.command("git", "tag", "module1-v1.0.0")
+        if (tags == Tags.previousInHistory) rootDir.command("git", "tag", "v1.2.3")
+        rootDir.command("git", "commit", "--allow-empty", "-m", "Third commit")
+        rootDir.command("git", "commit", "--allow-empty", "-m", "Fourth commit")
+        if (tags == Tags.isHead) rootDir.command("git", "tag", "v2.0.5")
+        rootDir.command("git", "tag", "module2-v2.0.0")
+
+        rootDir.resolve("settings.gradle").apply {
+            if (applyAt == ApplyAt.settings) writeText(
+                """
+                    plugins {
+                        id("$gitVersionPlugin")
+                        id("jacoco-testkit-coverage")
+                    }
+
+                    """.trimIndent()
             )
-        }.toList()
+            else createNewFile()
 
-    @JvmInline
-    private value class NonTransitive(val dependency: String) : CharSequence by dependency {
-        override fun toString() = dependency
+            appendText("rootProject.name = \"test\"\n\n")
+
+            if (layout == BuildLayout.includedBuild) appendText("includeBuild(\"build-logic\")\n")
+            if (layout == BuildLayout.multiModule || layout == BuildLayout.includedBuild)
+                appendText("include(\"module1\", \"module2\")\n")
+        }
+
+        rootDir.resolve("build.gradle").apply {
+            if (applyAt == ApplyAt.rootProject) writeText("plugins { id(\"$gitVersionPlugin\") }\n\n")
+            else createNewFile()
+            addStoreVersionTask()
+        }
+
+        if (layout == BuildLayout.includedBuild) {
+            rootDir.resolve("build-logic/settings.gradle").apply {
+                parentFile.mkdirs()
+                if (applyAt == ApplyAt.settings) writeText(
+                    """
+                    plugins {
+                        id("$gitVersionPlugin")
+                        id("jacoco-testkit-coverage")
+                    }
+
+                    """.trimIndent()
+                )
+                else createNewFile()
+
+                appendText("rootProject.name = \"build-logic\"\n\n")
+            }
+            rootDir.resolve("build-logic/build.gradle").apply {
+                if (applyAt == ApplyAt.rootProject) writeText("plugins { id(\"$gitVersionPlugin\") }\n\n")
+                else createNewFile()
+                addStoreVersionTask()
+            }
+        }
+
+        if (layout == BuildLayout.multiModule || layout == BuildLayout.includedBuild) {
+            rootDir.resolve("module1/build.gradle").apply {
+                parentFile.mkdirs()
+                if (applyAt == ApplyAt.childProjects) writeText(
+                    """
+                    plugins { id("$gitVersionPlugin") }
+                    gitVersion.tagPrefix = "module1-v"
+
+                    """.trimIndent()
+                )
+                else createNewFile()
+                addStoreVersionTask()
+            }
+
+            rootDir.resolve("module2/build.gradle").apply {
+                parentFile.mkdirs()
+                if (applyAt == ApplyAt.childProjects) writeText(
+                    """
+                    plugins { id("$gitVersionPlugin") }
+                    gitVersion.tagPrefix = "module2-v"
+
+                    """.trimIndent()
+                )
+                else createNewFile()
+                addStoreVersionTask()
+            }
+        }
+
+        Scenario(
+            layout = layout,
+            applyTarget = applyAt,
+            tags = tags,
+            rootDir = rootDir,
+        ).block()
     }
 
-    // TODO workaround for https://github.com/gradle/gradle/issues/31862
-    private fun gradleIssue31862Workaround() = ProblemsProgressEventEmitterHolder.init(object : InternalProblems {
-
-        override fun getInternalReporter() = object : InternalProblemReporter {
-
-            override fun report(
-                problem: Problem,
-                id: OperationIdentifier
-            ) {
-                TODO("Not yet implemented")
+    private fun File.command(vararg commandLine: String) =
+        with(Runtime.getRuntime().exec(commandLine, null, this)) {
+            check(waitFor() == 0) {
+                "Command '${commandLine.joinToString(" ")}' failed: ${
+                    errorStream.reader().readText().trim()
+                }"
             }
-
-            override fun internalCreate(action: Action<in InternalProblemSpec>): InternalProblem {
-                TODO("Not yet implemented")
-            }
-
-            override fun create(
-                problemId: ProblemId,
-                action: Action<in ProblemSpec>
-            ): Problem {
-                TODO("Not yet implemented")
-            }
-
-            override fun report(
-                problemId: ProblemId,
-                spec: Action<in ProblemSpec>
-            ) {
-                TODO("Not yet implemented")
-            }
-
-            override fun report(problem: Problem) {
-                TODO("Not yet implemented")
-            }
-
-            override fun report(problems: Collection<Problem?>) {
-                TODO("Not yet implemented")
-            }
-
-            override fun throwing(
-                exception: Throwable,
-                problemId: ProblemId,
-                spec: Action<in ProblemSpec>
-            ): RuntimeException {
-                TODO("Not yet implemented")
-            }
-
-            override fun throwing(
-                exception: Throwable,
-                problem: Problem
-            ): RuntimeException {
-                TODO("Not yet implemented")
-            }
-
-            override fun throwing(
-                exception: Throwable,
-                problems: Collection<Problem?>
-            ): RuntimeException {
-                TODO("Not yet implemented")
-            }
-
         }
 
-        override fun getAdditionalDataBuilderFactory(): AdditionalDataBuilderFactory {
-            TODO("Not yet implemented")
+    private fun File.addStoreVersionTask() {
+        appendText(
+            """
+            tasks.register("storeVersion") {
+                def versionFile = file("version.txt")
+                def version = "${'$'}{project.version}"
+                doLast {
+                    versionFile.text = version
+                }
+            }
+
+            """.trimIndent()
+        )
+    }
+
+    fun testData(): List<Array<*>> = BuildLayout.entries.flatMap { layout ->
+        ApplyAt.entries.flatMap { applyAt ->
+            Tags.entries.map { tags -> arrayOf(layout, applyAt, tags) }
         }
+    }
 
-        override fun getInstantiator(): Instantiator {
-            TODO("Not yet implemented")
-        }
+    data class Scenario(
+        val layout: BuildLayout,
+        val applyTarget: ApplyAt,
+        val tags: Tags,
+        val rootDir: File,
+    )
 
-        override fun getProblemBuilder(): InternalProblemBuilder {
-            TODO("Not yet implemented")
-        }
+    enum class BuildLayout {
+        singleModule,
+        multiModule,
+        includedBuild
+    }
 
-        override fun getReporter() = getInternalReporter()
+    enum class ApplyAt {
+        rootProject,
+        settings,
+        childProjects,
+    }
 
-    })
+    enum class Tags {
+        noneMatching,
+        previousInHistory,
+        isHead,
+    }
 
 }

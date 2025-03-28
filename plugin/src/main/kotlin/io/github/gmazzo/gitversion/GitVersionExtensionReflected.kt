@@ -1,6 +1,5 @@
 package io.github.gmazzo.gitversion
 
-import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.Property
 
 /**
@@ -12,20 +11,20 @@ internal class GitVersionExtensionReflected(
     private val delegate: Any
 ) : GitVersionExtension() {
 
-    private val gitRootDirectoryGetter =
-        delegate.javaClass.getMethod("getGitRootDirectory")
-
     private val tagPrefixGetter =
         delegate.javaClass.getMethod("getTagPrefix")
+
+    private val initialVersionGetter =
+        delegate.javaClass.getMethod("getInitialVersion")
 
     private val versionGetter =
         delegate.javaClass.getMethod("getVersion")
 
-    override val gitRootDirectory: DirectoryProperty
-        get() = gitRootDirectoryGetter.invoke(delegate) as DirectoryProperty
-
     override val tagPrefix: Property<String>
         get() = tagPrefixGetter.invoke(delegate) as Property<String>
+
+    override val initialVersion: Property<String>
+        get() = initialVersionGetter.invoke(delegate) as Property<String>
 
     override val version: Property<String>
         get() = versionGetter.invoke(delegate) as Property<String>

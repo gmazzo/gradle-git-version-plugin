@@ -22,15 +22,39 @@ abstract class GitVersionTagBasedValueSource @Inject constructor(
     private val logger = Logging.getLogger(GitVersionTagBasedValueSource::class.java)
 
     override fun obtain(): String = with(parameters) {
+        var snapshot = forceSnapshot.get()
         val prefix = tagPrefix.getOrElse("")
-        val tag = command("git", "describe", "--tags", "--match", "$prefix*", "--exact-match")
-            ?: command("git", "describe", "--tags", "--match", "$prefix*", "--abbrev=0") {
-                logger.warn("failed to compute git version (no tags yet?): $it")
-            }?.let { "$it$SNAPSHOT_SUFFIX" }
+        val tag = exactTag() ?: closestTag()?.also { snapshot = true }
+        val version = tag?.removePrefix(prefix) ?: parameters.initialVersion.get()
 
-        val candidate = tag?.removePrefix(prefix) ?: parameters.initialVersion.get()
-        if (forceSnapshot.get() && !candidate.endsWith(SNAPSHOT_SUFFIX)) "$candidate$SNAPSHOT_SUFFIX" else candidate
+        if (snapshot) version.nextSnapshot else version
     }
+
+    protected fun exactTag(tagPrefix: String = parameters.tagPrefix.getOrElse("")) =
+        command("git", "describe", "--tags", "--match", "$tagPrefix*", "--exact-match")
+
+    protected fun closestTag(tagPrefix: String = parameters.tagPrefix.getOrElse(""), warnIfMissing: Boolean = true) =
+        command("git", "describe", "--tags", "--match", "$tagPrefix*", "--abbrev=0") {
+            if (warnIfMissing) {
+                logger.warn("failed to compute git version (no tags yet?): $it")
+            }
+        }
+
+    protected val String.nextSnapshot: String
+        get() = when (val match = "(\\d+)\\.(\\d+)\\.(\\d+)(?:\\.(\\d+))?".toRegex().matchEntire(this)) {
+            null -> if (endsWith(SNAPSHOT_SUFFIX)) this else "$this$SNAPSHOT_SUFFIX"
+            else -> match.groupValues.asSequence()
+                .drop(1)
+                .filter { it.isNotBlank() }
+                .mapIndexed { i, it ->
+                    when (i) {
+                        0 -> it
+                        1 -> it.toInt() + 1
+                        else -> 0
+                    }
+                }
+                .joinToString(".") + SNAPSHOT_SUFFIX
+        }
 
     protected fun command(vararg args: String, onError: (String) -> Unit = {}): String? {
         val stdout = ByteArrayOutputStream()

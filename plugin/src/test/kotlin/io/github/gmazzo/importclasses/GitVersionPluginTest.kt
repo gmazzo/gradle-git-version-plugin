@@ -28,7 +28,7 @@ class GitVersionPluginTest {
                 ApplyAt.childProjects -> "unspecified"
                 else -> when (tags) {
                     Tags.noneMatching -> "0.1.0-SNAPSHOT"
-                    Tags.previousInHistory -> "1.2.3-SNAPSHOT"
+                    Tags.previousInHistory -> "1.3.0-SNAPSHOT"
                     Tags.isHead -> "2.0.5"
                 }
             }
@@ -41,7 +41,7 @@ class GitVersionPluginTest {
                 BuildLayout.multiModule -> when (applyAt) {
                     ApplyAt.childProjects -> mapOf(
                         "version.txt" to "unspecified",
-                        "module1/version.txt" to "1.0.0-SNAPSHOT",
+                        "module1/version.txt" to "1.1.0-SNAPSHOT",
                         "module2/version.txt" to "2.0.0",
                     )
 
@@ -55,7 +55,7 @@ class GitVersionPluginTest {
                 BuildLayout.includedBuild -> when (applyAt) {
                     ApplyAt.childProjects -> mapOf(
                         "version.txt" to "unspecified",
-                        "module1/version.txt" to "1.0.0-SNAPSHOT",
+                        "module1/version.txt" to "1.1.0-SNAPSHOT",
                         "module2/version.txt" to "2.0.0",
                         "build-logic/version.txt" to "unspecified",
                     )

@@ -1,16 +1,17 @@
 package io.github.gmazzo.gitversion
 
-import io.github.gmazzo.gitversion.GitVersionTagBasedValueSource.Companion.SNAPSHOT_SUFFIX
+import io.github.gmazzo.gitversion.GitVersionValueSource.Companion.SNAPSHOT_SUFFIX
 import javax.inject.Inject
 import org.gradle.api.Action
+import org.gradle.api.Named
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.initialization.Settings
+import org.gradle.api.internal.GradleInternal
 import org.gradle.api.invocation.Gradle
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.kotlin.dsl.create
-import org.gradle.kotlin.dsl.of
 import org.gradle.kotlin.dsl.typeOf
 
 class GitVersionPlugin @Inject constructor(
@@ -35,16 +36,22 @@ class GitVersionPlugin @Inject constructor(
                 .convention("0.1.0$SNAPSHOT_SUFFIX")
                 .finalizeValueOnRead()
 
-            val gitVersionForceSnapshot =
-                providers.gradleProperty("gitVersionForceSnapshot").map(String::toBoolean).orElse(false)
+            forceSnapshot
+                .convention(providers.gradleProperty("gitVersionForceSnapshot").map(String::toBoolean).orElse(false))
+                .finalizeValueOnRead()
 
-            val gitVersion = providers.of(GitVersionTagBasedValueSource::class) {
-                parameters.from(this@extension)
-                parameters.forceSnapshot.set(gitVersionForceSnapshot)
-            }
+            versionProducer
+                .convention(GitVersionValueSource::class.java)
+                .finalizeValueOnRead()
 
             version
-                .convention(gitVersion)
+                .convention(versionProducer.flatMap {
+                    providers.of(it) {
+                        parameters.tagPrefix.set(tagPrefix)
+                        parameters.forceSnapshot.set(forceSnapshot)
+                        parameters.initialVersion.set(initialVersion)
+                    }
+                })
                 .finalizeValueOnRead()
 
         }
@@ -63,13 +70,20 @@ class GitVersionPlugin @Inject constructor(
     private fun ExtensionAware.findOrCreateExtension(
         onCreate: GitVersionExtension.() -> Unit,
     ): GitVersionExtension = when (val existing = findExtensionOnBuildHierarchy()) {
-        null -> extensions.create<GitVersionExtension>("gitVersion").also(onCreate)
-        else -> existing.also { extensions.add(typeOf<GitVersionExtension>(), "gitVersion", it) }
+        null -> extensions.create<GitVersionExtension>(EXTENSION_NAME, "$this").also(onCreate)
+        else -> GitVersionExtensionWrapped(existing).also {
+            extensions.add(typeOf<GitVersionExtension>(), EXTENSION_NAME, it)
+        }
     }
 
     private fun ExtensionAware.findExtensionOnBuildHierarchy() = generateSequence(this) { it.parent }
-        .mapNotNull { it.extensions.findByName("gitVersion") }
-        .map { it as? GitVersionExtension ?: GitVersionExtensionReflected(it) }
+        .mapNotNull { owner ->
+            when (val extension = owner.extensions.findByName(EXTENSION_NAME) as Named?) {
+                null -> null
+                is GitVersionExtension -> extension
+                else -> GitVersionExtensionWrapped(extension)
+            }
+        }
         .firstOrNull()
 
     private val ExtensionAware.parent: ExtensionAware?
@@ -81,13 +95,19 @@ class GitVersionPlugin @Inject constructor(
         }
 
     private fun ExtensionAware.propagateExtension(extension: GitVersionExtension) {
-        fun ExtensionAware.propagate() =
-            extensions.add(typeOf<GitVersionExtension>(), "gitVersion", extension)
+        fun Gradle.propagate() = with((this as GradleInternal).root) {
+            extensions.findByName(EXTENSION_NAME) // it may exist already, even from another classpath
+                ?: extensions.add(typeOf<GitVersionExtension>(), EXTENSION_NAME, extension)
+        }
 
         when (this) {
             is Project -> if (project == rootProject) gradle.propagate()
             is Settings -> gradle.propagate()
         }
+    }
+
+    companion object {
+        const val EXTENSION_NAME = "gitVersion"
     }
 
 }

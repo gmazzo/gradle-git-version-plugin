@@ -32,7 +32,7 @@ The version is computed using `git describe` commands as follows:
 2) If the current commit is not tagged, the version is the tag name of the latest tag reachable from the current commit suffixed with `-SNAPSHOT`.
 3) If there are no tags, the version is `0.1.0-SNAPSHOT`.
 
-## `includedBuild` support
+## Included builds support
 This plugin can be applied at `build.gradle` or `settings.gradle` script.
 If you apply it as well in inside an `includedBuild`'s build script, the same version instance will be configured to it.
 
@@ -74,3 +74,20 @@ plugins {
 ```
 > [!NOTE]
 > Note that `bar`, `bar:api` and `bar:impl` will all share the same version
+
+## Customizing the version
+You can customize the version by setting the `tagPrefix` and `initialVersion` properties in the `gitVersion` block.
+
+Also a custom `versionProducer` can be set by extending the `GitVersionValueSource` class.
+
+For instance, the following code will decorate the version with the current branch name:
+```kotlin
+gitVersion.versionProducer = WithBranch::class.java
+
+abstract class WithBranch : GitVersionValueSource() {
+
+    override fun obtain() =
+      super.obtain() + "+" + command("git", "rev-parse", "--abbrev-ref", "HEAD")
+
+}
+```

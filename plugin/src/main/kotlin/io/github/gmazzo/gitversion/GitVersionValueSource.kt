@@ -9,17 +9,18 @@ import org.gradle.api.provider.ValueSourceParameters
 import org.gradle.process.ExecOperations
 
 /**
- * A [ValueSource] that computes the version based on the latest git tag (optional filtering by [GitVersionTagBasedValueSource.Params.tagPrefix]).
+ * A [ValueSource] that computes the version based on the latest git tag (optional filtering by [GitVersionValueSource.Params.tagPrefix]).
  *
  * The version is computed as follows:
  * 1) If the current commit is tagged, the version is the tag name.
  * 2) If the current commit is not tagged, the version is the tag name of the latest tag reachable from the current commit suffixed with `-SNAPSHOT`.
- * 3) If there are no tags, the version is `0.1.0-SNAPSHOT` (configured through [GitVersionTagBasedValueSource.Params.initialVersion]).
+ * 3) If there are no tags, the version is `0.1.0-SNAPSHOT` (configured through [GitVersionValueSource.Params.initialVersion]).
  */
-abstract class GitVersionTagBasedValueSource @Inject constructor(
-    private val execOperations: ExecOperations,
-) : ValueSource<String, GitVersionTagBasedValueSource.Params> {
-    private val logger = Logging.getLogger(GitVersionTagBasedValueSource::class.java)
+abstract class GitVersionValueSource : ValueSource<String, GitVersionValueSource.Params> {
+    private val logger = Logging.getLogger(GitVersionValueSource::class.java)
+
+    @get:Inject
+    protected abstract val execOperations: ExecOperations
 
     override fun obtain(): String = with(parameters) {
         var snapshot = forceSnapshot.get()
@@ -81,11 +82,6 @@ abstract class GitVersionTagBasedValueSource @Inject constructor(
         val initialVersion: Property<String>
 
         val forceSnapshot: Property<Boolean>
-
-        fun from(extension: GitVersionExtension) = apply {
-            tagPrefix.set(extension.tagPrefix)
-            initialVersion.set(extension.initialVersion)
-        }
 
     }
 

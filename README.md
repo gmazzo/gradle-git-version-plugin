@@ -91,3 +91,5 @@ abstract class WithBranch : GitVersionValueSource() {
 
 }
 ```
+> [!NOTE]
+> You can always set your own version logic by just assigning a value to the property `version`.

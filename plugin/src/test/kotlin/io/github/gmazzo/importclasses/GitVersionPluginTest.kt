@@ -74,6 +74,7 @@ class GitVersionPluginTest {
                 .withProjectDir(rootDir)
                 .withArguments(
                     listOfNotNull(
+                        "-s",
                         "storeVersion",
                         "build-logic:storeVersion".takeIf { layout == BuildLayout.includedBuild }),
                 )
@@ -162,7 +163,6 @@ class GitVersionPluginTest {
                     """.trimIndent()
                 )
                 else createNewFile()
-                addStoreVersionTask()
             }
 
             rootDir.resolve("module2/build.gradle").apply {
@@ -175,7 +175,6 @@ class GitVersionPluginTest {
                     """.trimIndent()
                 )
                 else createNewFile()
-                addStoreVersionTask()
             }
         }
 
@@ -199,11 +198,13 @@ class GitVersionPluginTest {
     private fun File.addStoreVersionTask() {
         appendText(
             """
-            tasks.register("storeVersion") {
-                def versionFile = file("version.txt")
-                def version = "${'$'}{project.version}"
-                doLast {
-                    versionFile.text = version
+            allprojects {
+                tasks.register("storeVersion") {
+                    def versionFile = file("version.txt")
+                    def version = "${'$'}{project.version}"
+                    doLast {
+                        versionFile.text = version
+                    }
                 }
             }
 

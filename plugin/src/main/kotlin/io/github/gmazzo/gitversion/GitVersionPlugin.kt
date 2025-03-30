@@ -8,12 +8,14 @@ import org.gradle.api.Project
 import org.gradle.api.initialization.Settings
 import org.gradle.api.internal.GradleInternal
 import org.gradle.api.invocation.Gradle
+import org.gradle.api.model.ObjectFactory
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.kotlin.dsl.create
 import org.gradle.kotlin.dsl.of
 
 class GitVersionPlugin @Inject constructor(
+    private val objects: ObjectFactory,
     private val providers: ProviderFactory,
 ) : Plugin<Any> {
 
@@ -51,6 +53,10 @@ class GitVersionPlugin @Inject constructor(
                 })
                 .finalizeValueOnRead()
 
+            forWholeBuild
+                .convention(if (this@configure is Project) project == rootProject else true)
+                .finalizeValueOnRead()
+
         }
 
         propagateExtension(extension)
@@ -65,19 +71,16 @@ class GitVersionPlugin @Inject constructor(
      * between main and any included builds.
      */
     private fun ExtensionAware.findOrCreateExtension(
-        onCreate: GitVersionExtensionInternal.() -> Unit,
-    ): GitVersionExtension = when (val existing = findExtensionOnBuildHierarchy()) {
-        null -> createExtension().also { onCreate(it as GitVersionExtensionInternal) }
+        onCreate: GitVersionExtension.() -> Unit,
+    ): GitVersionExtensionReadonly = when (val existing = findExtensionOnBuildHierarchy()) {
+        null -> extensions.create<GitVersionExtension>(EXTENSION_NAME).also(onCreate)
         else -> existing.also { extensions.add(EXTENSION_NAME, it) }
     }
 
-    private fun ExtensionAware.findExtensionOnBuildHierarchy() = generateSequence(this) { it.parent }
+    private fun ExtensionAware.findExtensionOnBuildHierarchy() = generateSequence(parent) { it.parent }
         .mapNotNull { it.extensions.findByName(EXTENSION_NAME) }
-        .map { it as? GitVersionExtension ?: GitVersionExtensionReadonly(it) }
+        .map { GitVersionExtensionReflected(objects, it) }
         .firstOrNull()
-
-    private fun ExtensionAware.createExtension() =
-        extensions.create(GitVersionExtension::class, EXTENSION_NAME, GitVersionExtensionInternal::class, "$this")
 
     private val ExtensionAware.parent: ExtensionAware?
         get() = when (this) {
@@ -87,16 +90,18 @@ class GitVersionPlugin @Inject constructor(
             else -> throw IllegalArgumentException("Unsupported target object: $this")
         }
 
-    private fun ExtensionAware.propagateExtension(extension: GitVersionExtension) {
-        fun Gradle.propagate() = with((this as GradleInternal).root) {
-            extensions.findByName(EXTENSION_NAME) // it may exist already, even from another classpath
-                ?: extensions.add(EXTENSION_NAME, extension)
-        }
+    private fun ExtensionAware.propagateExtension(extension: GitVersionExtensionReadonly) {
+        val propagate by lazy { extension.forWholeBuild.getOrElse(true) }
 
         when (this) {
-            is Project -> if (project == rootProject) gradle.propagate()
-            is Settings -> gradle.propagate()
+            is Project -> afterEvaluate { if (propagate) gradle.propagate(extension) }
+            is Settings -> gradle.settingsEvaluated { if (propagate) gradle.propagate(extension) }
         }
+    }
+
+    private fun Gradle.propagate(extension: GitVersionExtensionReadonly) = with((this as GradleInternal).root) {
+        extensions.findByName(EXTENSION_NAME) // it may exist already, even from another classpath
+            ?: extensions.add(EXTENSION_NAME, extension)
     }
 
     companion object {

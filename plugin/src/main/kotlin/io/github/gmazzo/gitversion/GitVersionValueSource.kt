@@ -16,48 +16,51 @@ import org.gradle.process.ExecOperations
  * 2) If the current commit is not tagged, the version is the tag name of the latest tag reachable from the current commit suffixed with `-SNAPSHOT`.
  * 3) If there are no tags, the version is `0.1.0-SNAPSHOT` (configured through [GitVersionValueSource.Params.initialVersion]).
  */
-abstract class GitVersionValueSource : ValueSource<String, GitVersionValueSource.Params> {
+abstract class GitVersionValueSource @Inject constructor(
+    private val execOperations: ExecOperations
+) : ValueSource<String, GitVersionValueSource.Params> {
     private val logger = Logging.getLogger(GitVersionValueSource::class.java)
 
-    @get:Inject
-    protected abstract val execOperations: ExecOperations
+    val candidate: String by lazy {
+        with(parameters) {
+            var snapshot = forceSnapshot.get()
+            val prefix = tagPrefix.getOrElse("")
+            val tag = exactTag() ?: closestTag()?.also { snapshot = true }
+            val version = tag?.removePrefix(prefix) ?: parameters.initialVersion.get()
 
-    override fun obtain(): String = with(parameters) {
-        var snapshot = forceSnapshot.get()
-        val prefix = tagPrefix.getOrElse("")
-        val tag = exactTag() ?: closestTag()?.also { snapshot = true }
-        val version = tag?.removePrefix(prefix) ?: parameters.initialVersion.get()
-
-        if (snapshot) version.nextSnapshot else version
+            if (snapshot) version.nextSnapshot else version
+        }
     }
 
-    protected fun exactTag(tagPrefix: String = parameters.tagPrefix.getOrElse("")) =
+    override fun obtain(): String =
+        parameters.versionProducer.orNull?.produceVersion(this) ?: candidate
+
+    fun exactTag(tagPrefix: String = parameters.tagPrefix.getOrElse("")) =
         command("git", "describe", "--tags", "--match", "$tagPrefix*", "--exact-match")
 
-    protected fun closestTag(tagPrefix: String = parameters.tagPrefix.getOrElse(""), warnIfMissing: Boolean = true) =
+    fun closestTag(tagPrefix: String = parameters.tagPrefix.getOrElse(""), warnIfMissing: Boolean = true) =
         command("git", "describe", "--tags", "--match", "$tagPrefix*", "--abbrev=0") {
             if (warnIfMissing) {
                 logger.warn("failed to compute git version (no tags yet?): $it")
             }
         }
 
-    protected val String.nextSnapshot: String
-        get() = when (val match = "(\\d+)\\.(\\d+)\\.(\\d+)(?:\\.(\\d+))?".toRegex().matchEntire(this)) {
+    val String.nextSnapshot: String
+        get() = when (val match = "(\\d+)\\.(\\d+)\\.(\\d+)(\\.\\d+)?(.*)$".toRegex().matchEntire(this)) {
             null -> if (endsWith(SNAPSHOT_SUFFIX)) this else "$this$SNAPSHOT_SUFFIX"
-            else -> match.groupValues.asSequence()
-                .drop(1)
-                .filter { it.isNotBlank() }
-                .mapIndexed { i, it ->
-                    when (i) {
-                        0 -> it
-                        1 -> it.toInt() + 1
-                        else -> 0
-                    }
+            else -> match.destructured.let { (major, minor, _, build, suffix) ->
+                buildString {
+                    append(major)
+                    append('.')
+                    append(minor.toInt() + 1)
+                    append(".0")
+                    if (build.isNotEmpty()) append(".0")
+                    append(SNAPSHOT_SUFFIX)
+                    append(suffix)
                 }
-                .joinToString(".") + SNAPSHOT_SUFFIX
-        }
+        }}
 
-    protected fun command(vararg args: String, onError: (String) -> Unit = {}): String? {
+    fun command(vararg args: String, onError: (String) -> Unit = {}): String? {
         val stdout = ByteArrayOutputStream()
         val stderr = ByteArrayOutputStream()
         val exitValue = execOperations.exec {
@@ -74,7 +77,6 @@ abstract class GitVersionValueSource : ValueSource<String, GitVersionValueSource
         return null
     }
 
-    @JvmDefaultWithoutCompatibility
     interface Params : ValueSourceParameters {
 
         val tagPrefix: Property<String>
@@ -82,6 +84,8 @@ abstract class GitVersionValueSource : ValueSource<String, GitVersionValueSource
         val initialVersion: Property<String>
 
         val forceSnapshot: Property<Boolean>
+
+        val versionProducer: Property<GitVersionProducer>
 
     }
 

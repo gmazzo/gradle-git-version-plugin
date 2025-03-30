@@ -1,20 +1,20 @@
 package io.github.gmazzo.gitversion
 
-import org.gradle.api.Named
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.Provider
 
-abstract class GitVersionExtension() : Named {
+interface GitVersionExtension {
 
-    abstract val tagPrefix: Property<String>
+    val tagPrefix: Property<String>
 
-    abstract val forceSnapshot : Property<Boolean>
+    val forceSnapshot : Property<Boolean>
 
-    abstract val initialVersion: Property<String>
+    val initialVersion: Property<String>
 
-    abstract val versionProducer: Property<Class<out GitVersionValueSource>>
+    val versionProducer: Property<GitVersionProducer>
 
-    abstract val version: Property<String>
+    fun versionProducer(producer: GitVersionProducer)
 
-    override fun toString() = version.get().toString()
+    val version: Provider<String>
 
 }

@@ -3,18 +3,19 @@ package io.github.gmazzo.gitversion
 import io.github.gmazzo.gitversion.GitVersionValueSource.Companion.SNAPSHOT_SUFFIX
 import javax.inject.Inject
 import org.gradle.api.Action
-import org.gradle.api.Named
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.initialization.Settings
 import org.gradle.api.internal.GradleInternal
 import org.gradle.api.invocation.Gradle
+import org.gradle.api.model.ObjectFactory
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.kotlin.dsl.create
-import org.gradle.kotlin.dsl.typeOf
+import org.gradle.kotlin.dsl.of
 
 class GitVersionPlugin @Inject constructor(
+    private val objects: ObjectFactory,
     private val providers: ProviderFactory,
 ) : Plugin<Any> {
 
@@ -41,17 +42,19 @@ class GitVersionPlugin @Inject constructor(
                 .finalizeValueOnRead()
 
             versionProducer
-                .convention(GitVersionValueSource::class.java)
                 .finalizeValueOnRead()
 
             version
-                .convention(versionProducer.flatMap {
-                    providers.of(it) {
-                        parameters.tagPrefix.set(tagPrefix)
-                        parameters.forceSnapshot.set(forceSnapshot)
-                        parameters.initialVersion.set(initialVersion)
-                    }
+                .convention(providers.of(GitVersionValueSource::class) {
+                    parameters.tagPrefix.set(tagPrefix)
+                    parameters.forceSnapshot.set(forceSnapshot)
+                    parameters.initialVersion.set(initialVersion)
+                    parameters.versionProducer.set(versionProducer)
                 })
+                .finalizeValueOnRead()
+
+            forWholeBuild
+                .convention(if (this@configure is Project) project == rootProject else true)
                 .finalizeValueOnRead()
 
         }
@@ -69,21 +72,14 @@ class GitVersionPlugin @Inject constructor(
      */
     private fun ExtensionAware.findOrCreateExtension(
         onCreate: GitVersionExtension.() -> Unit,
-    ): GitVersionExtension = when (val existing = findExtensionOnBuildHierarchy()) {
-        null -> extensions.create<GitVersionExtension>(EXTENSION_NAME, "$this").also(onCreate)
-        else -> GitVersionExtensionWrapped(existing).also {
-            extensions.add(typeOf<GitVersionExtension>(), EXTENSION_NAME, it)
-        }
+    ): GitVersionExtensionReadonly = when (val existing = findExtensionOnBuildHierarchy()) {
+        null -> extensions.create<GitVersionExtension>(EXTENSION_NAME).also(onCreate)
+        else -> existing.also { extensions.add(EXTENSION_NAME, it) }
     }
 
-    private fun ExtensionAware.findExtensionOnBuildHierarchy() = generateSequence(this) { it.parent }
-        .mapNotNull { owner ->
-            when (val extension = owner.extensions.findByName(EXTENSION_NAME) as Named?) {
-                null -> null
-                is GitVersionExtension -> extension
-                else -> GitVersionExtensionWrapped(extension)
-            }
-        }
+    private fun ExtensionAware.findExtensionOnBuildHierarchy() = generateSequence(parent) { it.parent }
+        .mapNotNull { it.extensions.findByName(EXTENSION_NAME) }
+        .map { GitVersionExtensionReflected(objects, it) }
         .firstOrNull()
 
     private val ExtensionAware.parent: ExtensionAware?
@@ -94,16 +90,18 @@ class GitVersionPlugin @Inject constructor(
             else -> throw IllegalArgumentException("Unsupported target object: $this")
         }
 
-    private fun ExtensionAware.propagateExtension(extension: GitVersionExtension) {
-        fun Gradle.propagate() = with((this as GradleInternal).root) {
-            extensions.findByName(EXTENSION_NAME) // it may exist already, even from another classpath
-                ?: extensions.add(typeOf<GitVersionExtension>(), EXTENSION_NAME, extension)
-        }
+    private fun ExtensionAware.propagateExtension(extension: GitVersionExtensionReadonly) {
+        val propagate by lazy { extension.forWholeBuild.getOrElse(true) }
 
         when (this) {
-            is Project -> if (project == rootProject) gradle.propagate()
-            is Settings -> gradle.propagate()
+            is Project -> afterEvaluate { if (propagate) gradle.propagate(extension) }
+            is Settings -> gradle.settingsEvaluated { if (propagate) gradle.propagate(extension) }
         }
+    }
+
+    private fun Gradle.propagate(extension: GitVersionExtensionReadonly) = with((this as GradleInternal).root) {
+        extensions.findByName(EXTENSION_NAME) // it may exist already, even from another classpath
+            ?: extensions.add(EXTENSION_NAME, extension)
     }
 
     companion object {

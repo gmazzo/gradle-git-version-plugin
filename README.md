@@ -82,14 +82,9 @@ Also a custom `versionProducer` can be set by extending the `GitVersionValueSour
 
 For instance, the following code will decorate the version with the current branch name:
 ```kotlin
-gitVersion.versionProducer = WithBranch::class.java
+gitVersion.versionProducer {
+  val branch = command("git", "rev-parse", "--abbrev-ref", "HEAD")
 
-abstract class WithBranch : GitVersionValueSource() {
-
-    override fun obtain() =
-      super.obtain() + "+" + command("git", "rev-parse", "--abbrev-ref", "HEAD")
-
+  "$candidate+$branch"
 }
 ```
-> [!NOTE]
-> You can always set your own version logic by just assigning a value to the property `version`.

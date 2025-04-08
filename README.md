@@ -93,19 +93,17 @@ gitVersion.versionProducer {
 An opinionated approach: `versionName` will be the computed git version, and `versionCode` the number of tags/versions in the branch history
 
 ```kotlin
-val versionTagsCount = providers.of(GitVersionValueSource::class) {
-    parameters.tagPrefix = gitVersion.tagPrefix
-    parameters.versionProducer = GitVersionProducer {
-        val prefix = parameters.tagPrefix.getOrElse("")
+val versionTagsCount = gitVersion.provider {
+  val prefix = parameters.tagPrefix.getOrElse("")
 
-        command(
-            "git", "log", "--tags", "--simplify-by-decoration",
-            "--decorate-refs=refs/tags/$prefix*")!!.lines().count().toString()
-    }
-}
+  command(
+    "git", "log", "--tags", "--simplify-by-decoration",
+    "--decorate-refs=refs/tags/$prefix*"
+  )!!.lines().count().toString()
+}.map { it.toInt() }
 
 android {
     defaultConfig {
-        versionCode = versionTagsCount.get().toInt()
+        versionCode = versionTagsCount.get()
         versionName = gitVersion.toString()
 ```

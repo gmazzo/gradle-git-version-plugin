@@ -1,21 +1,24 @@
 package io.github.gmazzo.gitversion
 
+import javax.inject.Inject
+import kotlin.reflect.KProperty
+import kotlin.reflect.jvm.javaMethod
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
+import org.gradle.api.provider.ProviderFactory
 import org.gradle.kotlin.dsl.property
-import kotlin.reflect.KProperty
-import kotlin.reflect.jvm.javaMethod
 
 /**
  * Allows accessing the root [GitVersionExtension] extension, when the plugin is loaded in different classloaders
  * (mostly when using [org.gradle.api.initialization.Settings.includeBuild]).
  */
 @Suppress("UNCHECKED_CAST")
-internal class GitVersionExtensionReflected(
+internal abstract class GitVersionExtensionReflected @Inject constructor(
+    providers: ProviderFactory,
     private val objects: ObjectFactory,
-    private val delegate: Any
-) : GitVersionExtensionReadonly() {
+    private val delegate: Any,
+) : GitVersionExtensionReadonly(providers) {
 
     override val tagPrefix = delegated(GitVersionExtension::tagPrefix)
 

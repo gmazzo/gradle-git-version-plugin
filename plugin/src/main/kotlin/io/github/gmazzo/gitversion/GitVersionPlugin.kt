@@ -12,7 +12,7 @@ import org.gradle.api.model.ObjectFactory
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.kotlin.dsl.create
-import org.gradle.kotlin.dsl.of
+import org.gradle.kotlin.dsl.newInstance
 
 class GitVersionPlugin @Inject constructor(
     private val objects: ObjectFactory,
@@ -45,12 +45,7 @@ class GitVersionPlugin @Inject constructor(
                 .finalizeValueOnRead()
 
             version
-                .convention(providers.of(GitVersionValueSource::class) {
-                    parameters.tagPrefix.set(tagPrefix)
-                    parameters.forceSnapshot.set(forceSnapshot)
-                    parameters.initialVersion.set(initialVersion)
-                    parameters.versionProducer.set(versionProducer)
-                })
+                .convention(versionProducer.flatMap(::provider).orElse(provider(null)))
                 .finalizeValueOnRead()
 
             forWholeBuild
@@ -79,7 +74,7 @@ class GitVersionPlugin @Inject constructor(
 
     private fun ExtensionAware.findExtensionOnBuildHierarchy() = generateSequence(parent) { it.parent }
         .mapNotNull { it.extensions.findByName(EXTENSION_NAME) }
-        .map { GitVersionExtensionReflected(objects, it) }
+        .map { objects.newInstance<GitVersionExtensionReflected>(providers, objects, it) }
         .firstOrNull()
 
     private val ExtensionAware.parent: ExtensionAware?

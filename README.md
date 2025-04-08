@@ -88,3 +88,24 @@ gitVersion.versionProducer {
   "$candidate+$branch"
 }
 ```
+
+## Versining on Android
+An opinionated approach: `versionName` will be the computed git version, and `versionCode` the number of tags/versions in the branch history
+
+```kotlin
+val versionTagsCount = providers.of(GitVersionValueSource::class) {
+    parameters.tagPrefix = gitVersion.tagPrefix
+    parameters.versionProducer = GitVersionProducer {
+        val prefix = parameters.tagPrefix.getOrElse("")
+
+        command(
+            "git", "log", "--tags", "--simplify-by-decoration",
+            "--decorate-refs=refs/tags/$prefix*")!!.lines().count().toString()
+    }
+}
+
+android {
+    defaultConfig {
+        versionCode = versionTagsCount.get().toInt()
+        versionName = gitVersion.toString()
+```

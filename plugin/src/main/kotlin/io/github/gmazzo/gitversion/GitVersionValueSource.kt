@@ -2,6 +2,7 @@ package io.github.gmazzo.gitversion
 
 import java.io.ByteArrayOutputStream
 import javax.inject.Inject
+import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.logging.Logging
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.ValueSource
@@ -45,9 +46,13 @@ abstract class GitVersionValueSource @Inject constructor(
             }
         }
 
+    fun tagsCount(tagPrefix: String = parameters.tagPrefix.getOrElse("")): Int =
+        command("git", "tag", "--merged", "HEAD", "$tagPrefix*")!!.lines().count()
+
     val String.nextSnapshot: String
-        get() = when (val match = "(\\d+)\\.(\\d+)\\.(\\d+)(\\.\\d+)?(.*)$".toRegex().matchEntire(this)) {
-            null -> if (endsWith(SNAPSHOT_SUFFIX)) this else "$this$SNAPSHOT_SUFFIX"
+        get() = if (endsWith(SNAPSHOT_SUFFIX)) this
+        else when (val match = "(\\d+)\\.(\\d+)\\.(\\d+)(\\.\\d+)?(.*)$".toRegex().matchEntire(this)) {
+            null -> "$this$SNAPSHOT_SUFFIX"
             else -> match.destructured.let { (major, minor, _, build, suffix) ->
                 buildString {
                     append(major)
@@ -58,12 +63,14 @@ abstract class GitVersionValueSource @Inject constructor(
                     append(SNAPSHOT_SUFFIX)
                     append(suffix)
                 }
-        }}
+            }
+        }
 
     fun command(vararg args: String, onError: (String) -> Unit = {}): String? {
         val stdout = ByteArrayOutputStream()
         val stderr = ByteArrayOutputStream()
         val exitValue = execOperations.exec {
+            parameters.gitRoot.asFile.orNull?.let(::workingDir)
             commandLine = args.toList()
             isIgnoreExitValue = true
             standardOutput = stdout
@@ -78,6 +85,8 @@ abstract class GitVersionValueSource @Inject constructor(
     }
 
     interface Params : ValueSourceParameters {
+
+        val gitRoot: DirectoryProperty
 
         val tagPrefix: Property<String>
 

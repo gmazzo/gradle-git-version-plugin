@@ -1,14 +1,13 @@
-@file:Suppress("EnumEntryName")
-
 package io.github.gmazzo.gitversion
 
-import java.io.File
 import org.gradle.testkit.runner.GradleRunner
-import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
+import java.io.File
+import org.junit.jupiter.api.AfterAll
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class GitVersionPluginTest {
@@ -18,6 +17,11 @@ class GitVersionPluginTest {
     @BeforeAll
     fun setup() {
         tempDir.deleteRecursively()
+    }
+
+    @AfterAll
+    fun cleanupGitRepos() {
+        tempDir.walkTopDown().filter { it.isDirectory && it.name == ".git" }.forEach { it.deleteRecursively() }
     }
 
     @ParameterizedTest(name = "{0}, {1}, {2}")
@@ -85,7 +89,7 @@ class GitVersionPluginTest {
                 .filter { it.name == "version.txt" }
                 .associateBy({ it.toRelativeString(rootDir) }, { it.readText() })
 
-            assertEquals(expectedVersions, actualVersions)
+            Assertions.assertEquals(expectedVersions, actualVersions)
         }
 
     private fun runTest(layout: BuildLayout, applyAt: ApplyAt, tags: Tags, block: Scenario.() -> Unit) {
@@ -185,15 +189,6 @@ class GitVersionPluginTest {
             rootDir = rootDir,
         ).block()
     }
-
-    private fun File.command(vararg commandLine: String) =
-        with(Runtime.getRuntime().exec(commandLine, null, this)) {
-            check(waitFor() == 0) {
-                "Command '${commandLine.joinToString(" ")}' failed: ${
-                    errorStream.reader().readText().trim()
-                }"
-            }
-        }
 
     private fun File.addStoreVersionTask() {
         appendText(

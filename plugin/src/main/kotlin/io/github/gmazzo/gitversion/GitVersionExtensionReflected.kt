@@ -38,7 +38,7 @@ internal abstract class GitVersionExtensionReflected @Inject constructor(
             .invoke(delegate) as Property<Type>
 
     } catch (e: NoSuchMethodException) {
-        e.printStackTrace() // this may happen if differet binary incompatible versions are loaded
+        e.printStackTrace() // this may happen if different binary incompatible versions are loaded
         objects.property<Type>()
     }
 

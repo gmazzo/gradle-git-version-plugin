@@ -5,6 +5,8 @@
 [![Coverage](https://codecov.io/gh/gmazzo/gradle-git-version-plugin/branch/main/graph/badge.svg?token=D5cDiPWvcS)](https://codecov.io/gh/gmazzo/gradle-git-version-plugin)
 [![Users](https://img.shields.io/badge/users_by-Sourcegraph-purple)](https://sourcegraph.com/search?q=content:io.github.gmazzo.gitversion+-repo:github.com/gmazzo/gradle-git-version-plugin)
 
+[![Contributors](https://contrib.rocks/image?repo=gmazzo/gradle-git-version-plugin)](https://github.com/gmazzo/gradle-git-version-plugin/graphs/contributors)
+
 # gradle-git-version-plugin
 
 An opinionated Gradle plugin to provide a project version using Git tags.

@@ -97,6 +97,6 @@ An opinionated approach: `versionName` will be the computed git version, and `ve
 ```kotlin
 android {
     defaultConfig {
-        versionCode = gitVersion.provider { (tagsCount() + 61).toString() }.get().toInt()
+        versionCode = gitVersion.provider { tagsCount().toString() }.get().toInt()
         versionName = gitVersion.toString()
 ```

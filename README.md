@@ -96,7 +96,7 @@ You use this plugin to bump the version by setting the `gitVersionModifier` prop
 and optionally store it as a Git tag.
 
 The syntax of `gitVersionModifier` is a comma-separated list of the following commands:
-- `major`, `minor` or `patch` to bump the respective version part
+- `major`, `minor`, `patch` or `build` to bump the respective version part
 - `label=<value>` to add a `-<value>` decorator to the version (cleaning any existing label)
 - `metadata=<value>` to add a `+<value>` decorator to the version (keeping any existing metadata)
 - `storeTag` to store the computed version as a Git tag (targeting `HEAD`)
@@ -106,9 +106,6 @@ Examples:
 - `./gradlew -PgitVersionModifier=minor,label=SNAPSHOT` with `1.2.3-SNAPSHOT` will produce `1.3.0-SNAPSHOT`
 - `./gradlew -PgitVersionModifier=label=beta02,metadata=001` with `1.2.3-beta01` will produce `1.2.3-beta02+001`
 - `./gradlew -PgitVersionModifier=patch,storeTag` with `1.2.3` will produce `1.2.4` and store a Git tag `v1.2.4` (assuming `tagPrefix=v`)
-
-> [!NOTE]
-> The `gitVersionModifier` property strictly follows [Semantic Versioning](https://semver.org/) spec.
 
 ## Versioning on Android
 An opinionated approach: `versionName` will be the computed git version, and `versionCode` the number of tags/versions in the branch history

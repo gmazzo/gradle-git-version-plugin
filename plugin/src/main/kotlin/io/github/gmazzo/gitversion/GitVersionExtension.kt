@@ -14,6 +14,8 @@ abstract class GitVersionExtension @Inject constructor(
 
     abstract override val initialVersion: Property<String>
 
+    abstract override val versionModifier: Property<String>
+
     abstract val versionProducer: Property<GitVersionProducer>
 
     fun versionProducer(producer: GitVersionProducer) {

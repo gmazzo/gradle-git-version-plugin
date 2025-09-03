@@ -18,53 +18,52 @@ import org.gradle.process.ExecOperations
  * 3) If there are no tags, the version is `0.1.0-SNAPSHOT` (configured through [GitVersionValueSource.Params.initialVersion]).
  */
 abstract class GitVersionValueSource @Inject constructor(
-    private val execOperations: ExecOperations
+    private val execOperations: ExecOperations,
 ) : ValueSource<String, GitVersionValueSource.Params> {
     private val logger = Logging.getLogger(GitVersionValueSource::class.java)
+
+    private val prefix by lazy { parameters.tagPrefix.getOrElse("") }
+
+    val modifier by lazy { GitVersionModifierSpec.parse(parameters.versionModifier.get()) }
 
     val candidate: String by lazy {
         with(parameters) {
             var snapshot = forceSnapshot.get()
-            val prefix = tagPrefix.getOrElse("")
             val tag = exactTag() ?: closestTag()?.also { snapshot = true }
-            val version = tag?.removePrefix(prefix) ?: parameters.initialVersion.get()
+            val version = tag?.removePrefix(prefix) ?: initialVersion.get()
 
-            if (snapshot) version.nextSnapshot else version
+            modifier.let {
+                if (snapshot) it.copy(
+                    bump = it.bump ?: GitVersionModifierSpec.Bump.MINOR,
+                    labels = it.labels.orEmpty() + "SNAPSHOT",
+                ) else it
+            }.modify(version)
         }
     }
 
-    override fun obtain(): String =
-        parameters.versionProducer.orNull?.produceVersion(this) ?: candidate
+    override fun obtain(): String {
+        val version = parameters.versionProducer.orNull?.produceVersion(this) ?: candidate
+        if (modifier.storeTag) {
+            command("git", "tag", "$prefix$version") {
+                logger.error("Failed to store git tag '$version': $it")
+            }
+        }
+        return version
+    }
 
-    fun exactTag(tagPrefix: String = parameters.tagPrefix.getOrElse("")) =
+
+    fun exactTag(tagPrefix: String = prefix) =
         command("git", "describe", "--tags", "--match", "$tagPrefix*", "--exact-match")
 
-    fun closestTag(tagPrefix: String = parameters.tagPrefix.getOrElse(""), warnIfMissing: Boolean = true) =
+    fun closestTag(tagPrefix: String = prefix, warnIfMissing: Boolean = true) =
         command("git", "describe", "--tags", "--match", "$tagPrefix*", "--abbrev=0") {
             if (warnIfMissing) {
                 logger.warn("failed to compute git version (no tags yet?): $it")
             }
         }
 
-    fun tagsCount(tagPrefix: String = parameters.tagPrefix.getOrElse("")): Int =
+    fun tagsCount(tagPrefix: String = prefix): Int =
         command("git", "tag", "--merged", "HEAD", "$tagPrefix*")!!.lines().count()
-
-    val String.nextSnapshot: String
-        get() = if (endsWith(SNAPSHOT_SUFFIX)) this
-        else when (val match = "(\\d+)\\.(\\d+)\\.(\\d+)(\\.\\d+)?(.*)$".toRegex().matchEntire(this)) {
-            null -> "$this$SNAPSHOT_SUFFIX"
-            else -> match.destructured.let { (major, minor, _, build, suffix) ->
-                buildString {
-                    append(major)
-                    append('.')
-                    append(minor.toInt() + 1)
-                    append(".0")
-                    if (build.isNotEmpty()) append(".0")
-                    append(SNAPSHOT_SUFFIX)
-                    append(suffix)
-                }
-            }
-        }
 
     fun command(vararg args: String, onError: (String) -> Unit = {}): String? {
         val stdout = ByteArrayOutputStream()
@@ -94,12 +93,10 @@ abstract class GitVersionValueSource @Inject constructor(
 
         val forceSnapshot: Property<Boolean>
 
+        val versionModifier: Property<String>
+
         val versionProducer: Property<GitVersionProducer>
 
-    }
-
-    companion object {
-        const val SNAPSHOT_SUFFIX = "-SNAPSHOT"
     }
 
 }

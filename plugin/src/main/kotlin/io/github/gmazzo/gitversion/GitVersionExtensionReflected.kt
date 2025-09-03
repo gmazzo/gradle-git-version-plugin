@@ -28,6 +28,8 @@ internal abstract class GitVersionExtensionReflected @Inject constructor(
 
     override val version = delegated(GitVersionExtension::version)
 
+    override val versionModifier = delegated(GitVersionExtension::versionModifier)
+
     override val forWholeBuild = delegated(GitVersionExtension::forWholeBuild)
 
     private inline fun <reified Type> delegated(

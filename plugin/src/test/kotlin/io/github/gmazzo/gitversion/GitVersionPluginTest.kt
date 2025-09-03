@@ -192,11 +192,11 @@ class GitVersionPluginTest {
 
     private fun File.addStoreVersionTask() {
         appendText(
-            """
+            $$"""
             allprojects {
                 tasks.register("storeVersion") {
                     def versionFile = file("version.txt")
-                    def version = "${'$'}{project.version}"
+                    def version = "${project.version}"
                     doLast {
                         versionFile.text = version
                     }

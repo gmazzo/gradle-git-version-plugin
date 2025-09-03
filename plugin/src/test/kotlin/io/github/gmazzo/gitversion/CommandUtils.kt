@@ -9,4 +9,5 @@ fun File.command(vararg commandLine: String) =
                 errorStream.reader().readText().trim()
             }"
         }
+        inputStream.reader().readText().trim()
     }

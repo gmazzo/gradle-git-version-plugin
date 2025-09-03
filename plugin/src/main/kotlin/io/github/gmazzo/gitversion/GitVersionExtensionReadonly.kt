@@ -17,12 +17,15 @@ abstract class GitVersionExtensionReadonly @Inject constructor(
 
     abstract val version: Provider<String>
 
+    abstract val versionModifier: Provider<String>
+
     abstract val forWholeBuild: Provider<Boolean>
 
     fun provider(producer: GitVersionProducer?): Provider<String> = providers.of(GitVersionValueSource::class) {
         parameters.tagPrefix.set(tagPrefix)
         parameters.initialVersion.set(initialVersion)
         parameters.forceSnapshot.set(forceSnapshot)
+        parameters.versionModifier.set(versionModifier)
         parameters.versionProducer.set(producer)
     }
 

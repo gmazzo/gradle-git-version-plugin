@@ -1,6 +1,5 @@
 package io.github.gmazzo.gitversion
 
-import io.github.gmazzo.gitversion.GitVersionValueSource.Companion.SNAPSHOT_SUFFIX
 import javax.inject.Inject
 import org.gradle.api.Action
 import org.gradle.api.Plugin
@@ -34,11 +33,15 @@ class GitVersionPlugin @Inject constructor(
                 .finalizeValueOnRead()
 
             initialVersion
-                .convention("0.1.0$SNAPSHOT_SUFFIX")
+                .convention("0.1.0-SNAPSHOT")
                 .finalizeValueOnRead()
 
             forceSnapshot
-                .convention(providers.gradleProperty("gitVersionForceSnapshot").map(String::toBoolean).orElse(false))
+                .convention(providers.gradleProperty("gitVersionForceSnapshot").map { it.toBoolean() }.orElse(false))
+                .finalizeValueOnRead()
+
+            versionModifier
+                .convention(providers.gradleProperty("gitVersionModifier").orElse(""))
                 .finalizeValueOnRead()
 
             versionProducer

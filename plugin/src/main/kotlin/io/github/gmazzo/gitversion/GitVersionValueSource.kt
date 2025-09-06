@@ -63,7 +63,7 @@ abstract class GitVersionValueSource @Inject constructor(
         }
 
     fun tagsCount(tagPrefix: String = prefix): Int =
-        command("git", "tag", "--merged", "HEAD", "$tagPrefix*")!!.lines().count()
+        command("git", "tag", "--merged", "HEAD", "$tagPrefix*")?.lines().orEmpty().count()
 
     fun command(vararg args: String, onError: (String) -> Unit = {}): String? {
         val stdout = ByteArrayOutputStream()

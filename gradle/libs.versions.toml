@@ -7,7 +7,7 @@ junit-bom = { group = "org.junit", name = "junit-bom", version = "6.0.0" }
 junit-params = { group = "org.junit.jupiter", name = "junit-jupiter-params" }
 
 [plugins]
-dokka = { id = "org.jetbrains.dokka-javadoc", version = "2.0.0" }
+dokka = { id = "org.jetbrains.dokka-javadoc", version = "2.1.0" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-samReceiver = { id = "org.jetbrains.kotlin.plugin.sam.with.receiver", version.ref = "kotlin" }
 gradle-pluginPublish = { id = "com.gradle.plugin-publish", version = "2.0.0" }

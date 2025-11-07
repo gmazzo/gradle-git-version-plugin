@@ -1,0 +1,98 @@
+public abstract class io/github/gmazzo/gitversion/GitVersionExtension : io/github/gmazzo/gitversion/GitVersionExtensionReadonly {
+	public fun <init> (Lorg/gradle/api/provider/ProviderFactory;)V
+	public abstract fun getForWholeBuild ()Lorg/gradle/api/provider/Property;
+	public abstract fun getForceSnapshot ()Lorg/gradle/api/provider/Property;
+	public abstract fun getInitialVersion ()Lorg/gradle/api/provider/Property;
+	public abstract fun getTagPrefix ()Lorg/gradle/api/provider/Property;
+	public abstract fun getVersion ()Lorg/gradle/api/provider/Property;
+	public abstract fun getVersionModifier ()Lorg/gradle/api/provider/Property;
+	public abstract fun getVersionProducer ()Lorg/gradle/api/provider/Property;
+	public final fun versionProducer (Lio/github/gmazzo/gitversion/GitVersionProducer;)V
+}
+
+public abstract class io/github/gmazzo/gitversion/GitVersionExtensionReadonly {
+	public fun <init> (Lorg/gradle/api/provider/ProviderFactory;)V
+	public abstract fun getForWholeBuild ()Lorg/gradle/api/provider/Provider;
+	public abstract fun getForceSnapshot ()Lorg/gradle/api/provider/Provider;
+	public abstract fun getInitialVersion ()Lorg/gradle/api/provider/Provider;
+	public abstract fun getTagPrefix ()Lorg/gradle/api/provider/Provider;
+	public abstract fun getVersion ()Lorg/gradle/api/provider/Provider;
+	public abstract fun getVersionModifier ()Lorg/gradle/api/provider/Provider;
+	public final fun provider (Lio/github/gmazzo/gitversion/GitVersionProducer;)Lorg/gradle/api/provider/Provider;
+	public final fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/gmazzo/gitversion/GitVersionModifierSpec {
+	public static final field Companion Lio/github/gmazzo/gitversion/GitVersionModifierSpec$Companion;
+	public fun <init> ()V
+	public fun <init> (Lio/github/gmazzo/gitversion/GitVersionModifierSpec$Bump;Ljava/util/Set;Ljava/util/Set;Z)V
+	public synthetic fun <init> (Lio/github/gmazzo/gitversion/GitVersionModifierSpec$Bump;Ljava/util/Set;Ljava/util/Set;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/github/gmazzo/gitversion/GitVersionModifierSpec$Bump;
+	public final fun component2 ()Ljava/util/Set;
+	public final fun component3 ()Ljava/util/Set;
+	public final fun component4 ()Z
+	public final fun copy (Lio/github/gmazzo/gitversion/GitVersionModifierSpec$Bump;Ljava/util/Set;Ljava/util/Set;Z)Lio/github/gmazzo/gitversion/GitVersionModifierSpec;
+	public static synthetic fun copy$default (Lio/github/gmazzo/gitversion/GitVersionModifierSpec;Lio/github/gmazzo/gitversion/GitVersionModifierSpec$Bump;Ljava/util/Set;Ljava/util/Set;ZILjava/lang/Object;)Lio/github/gmazzo/gitversion/GitVersionModifierSpec;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBump ()Lio/github/gmazzo/gitversion/GitVersionModifierSpec$Bump;
+	public final fun getLabels ()Ljava/util/Set;
+	public final fun getMetadata ()Ljava/util/Set;
+	public final fun getStoreTag ()Z
+	public fun hashCode ()I
+	public final fun modify (Ljava/lang/String;)Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/gmazzo/gitversion/GitVersionModifierSpec$Bump : java/lang/Enum {
+	public static final field BUILD Lio/github/gmazzo/gitversion/GitVersionModifierSpec$Bump;
+	public static final field MAJOR Lio/github/gmazzo/gitversion/GitVersionModifierSpec$Bump;
+	public static final field MINOR Lio/github/gmazzo/gitversion/GitVersionModifierSpec$Bump;
+	public static final field PATCH Lio/github/gmazzo/gitversion/GitVersionModifierSpec$Bump;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/gmazzo/gitversion/GitVersionModifierSpec$Bump;
+	public static fun values ()[Lio/github/gmazzo/gitversion/GitVersionModifierSpec$Bump;
+}
+
+public final class io/github/gmazzo/gitversion/GitVersionModifierSpec$Companion {
+	public final fun parse (Ljava/lang/String;)Lio/github/gmazzo/gitversion/GitVersionModifierSpec;
+}
+
+public final class io/github/gmazzo/gitversion/GitVersionPlugin : org/gradle/api/Plugin {
+	public static final field Companion Lio/github/gmazzo/gitversion/GitVersionPlugin$Companion;
+	public static final field EXTENSION_NAME Ljava/lang/String;
+	public fun <init> (Lorg/gradle/api/model/ObjectFactory;Lorg/gradle/api/provider/ProviderFactory;)V
+	public fun apply (Ljava/lang/Object;)V
+}
+
+public final class io/github/gmazzo/gitversion/GitVersionPlugin$Companion {
+}
+
+public abstract interface class io/github/gmazzo/gitversion/GitVersionProducer : java/io/Serializable {
+	public abstract fun produceVersion (Lio/github/gmazzo/gitversion/GitVersionValueSource;)Ljava/lang/String;
+}
+
+public abstract class io/github/gmazzo/gitversion/GitVersionValueSource : org/gradle/api/provider/ValueSource {
+	public fun <init> (Lorg/gradle/process/ExecOperations;)V
+	public final fun closestTag (Ljava/lang/String;Z)Ljava/lang/String;
+	public static synthetic fun closestTag$default (Lio/github/gmazzo/gitversion/GitVersionValueSource;Ljava/lang/String;ZILjava/lang/Object;)Ljava/lang/String;
+	public final fun command ([Ljava/lang/String;Lkotlin/jvm/functions/Function1;)Ljava/lang/String;
+	public static synthetic fun command$default (Lio/github/gmazzo/gitversion/GitVersionValueSource;[Ljava/lang/String;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Ljava/lang/String;
+	public final fun exactTag (Ljava/lang/String;)Ljava/lang/String;
+	public static synthetic fun exactTag$default (Lio/github/gmazzo/gitversion/GitVersionValueSource;Ljava/lang/String;ILjava/lang/Object;)Ljava/lang/String;
+	public final fun getCandidate ()Ljava/lang/String;
+	public final fun getModifier ()Lio/github/gmazzo/gitversion/GitVersionModifierSpec;
+	public synthetic fun obtain ()Ljava/lang/Object;
+	public fun obtain ()Ljava/lang/String;
+	public final fun tagsCount (Ljava/lang/String;)I
+	public static synthetic fun tagsCount$default (Lio/github/gmazzo/gitversion/GitVersionValueSource;Ljava/lang/String;ILjava/lang/Object;)I
+}
+
+public abstract interface class io/github/gmazzo/gitversion/GitVersionValueSource$Params : org/gradle/api/provider/ValueSourceParameters {
+	public abstract fun getForceSnapshot ()Lorg/gradle/api/provider/Property;
+	public abstract fun getGitRoot ()Lorg/gradle/api/file/DirectoryProperty;
+	public abstract fun getInitialVersion ()Lorg/gradle/api/provider/Property;
+	public abstract fun getTagPrefix ()Lorg/gradle/api/provider/Property;
+	public abstract fun getVersionModifier ()Lorg/gradle/api/provider/Property;
+	public abstract fun getVersionProducer ()Lorg/gradle/api/provider/Property;
+}
+

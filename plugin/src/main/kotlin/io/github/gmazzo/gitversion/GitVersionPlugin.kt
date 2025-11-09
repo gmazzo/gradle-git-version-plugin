@@ -13,7 +13,7 @@ import org.gradle.api.provider.ProviderFactory
 import org.gradle.kotlin.dsl.create
 import org.gradle.kotlin.dsl.newInstance
 
-class GitVersionPlugin @Inject constructor(
+public class GitVersionPlugin @Inject constructor(
     private val objects: ObjectFactory,
     private val providers: ProviderFactory,
 ) : Plugin<Any> {
@@ -102,8 +102,8 @@ class GitVersionPlugin @Inject constructor(
             ?: extensions.add(EXTENSION_NAME, extension)
     }
 
-    companion object {
-        const val EXTENSION_NAME = "gitVersion"
+    public companion object {
+        public const val EXTENSION_NAME: String = "gitVersion"
     }
 
 }

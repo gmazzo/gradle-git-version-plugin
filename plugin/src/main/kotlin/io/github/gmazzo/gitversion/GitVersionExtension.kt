@@ -4,7 +4,7 @@ import javax.inject.Inject
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.ProviderFactory
 
-abstract class GitVersionExtension @Inject constructor(
+public abstract class GitVersionExtension @Inject constructor(
     providers: ProviderFactory,
 ) : GitVersionExtensionReadonly(providers) {
 
@@ -16,9 +16,9 @@ abstract class GitVersionExtension @Inject constructor(
 
     abstract override val versionModifier: Property<String>
 
-    abstract val versionProducer: Property<GitVersionProducer>
+    public abstract val versionProducer: Property<GitVersionProducer>
 
-    fun versionProducer(producer: GitVersionProducer) {
+    public fun versionProducer(producer: GitVersionProducer) {
         versionProducer.set(producer)
     }
 

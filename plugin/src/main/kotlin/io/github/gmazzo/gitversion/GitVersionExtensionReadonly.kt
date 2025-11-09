@@ -5,23 +5,23 @@ import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.kotlin.dsl.of
 
-abstract class GitVersionExtensionReadonly @Inject constructor(
+public abstract class GitVersionExtensionReadonly @Inject constructor(
     private val providers: ProviderFactory,
 ) {
 
-    abstract val tagPrefix: Provider<String>
+    public abstract val tagPrefix: Provider<String>
 
-    abstract val forceSnapshot: Provider<Boolean>
+    public abstract val forceSnapshot: Provider<Boolean>
 
-    abstract val initialVersion: Provider<String>
+    public abstract val initialVersion: Provider<String>
 
-    abstract val version: Provider<String>
+    public abstract val version: Provider<String>
 
-    abstract val versionModifier: Provider<String>
+    public abstract val versionModifier: Provider<String>
 
-    abstract val forWholeBuild: Provider<Boolean>
+    public abstract val forWholeBuild: Provider<Boolean>
 
-    fun provider(producer: GitVersionProducer?): Provider<String> = providers.of(GitVersionValueSource::class) {
+    public fun provider(producer: GitVersionProducer?): Provider<String> = providers.of(GitVersionValueSource::class) {
         parameters.tagPrefix.set(tagPrefix)
         parameters.initialVersion.set(initialVersion)
         parameters.forceSnapshot.set(forceSnapshot)
@@ -29,7 +29,7 @@ abstract class GitVersionExtensionReadonly @Inject constructor(
         parameters.versionProducer.set(producer)
     }
 
-    final override fun toString() =
+    final override fun toString(): String =
         version.get().toString()
 
 }

@@ -1,14 +1,14 @@
 package io.github.gmazzo.gitversion
 
 // honors https://semver.org/ spec
-data class GitVersionModifierSpec(
+public data class GitVersionModifierSpec(
     val bump: Bump? = null,
     val labels: Set<String>? = null,
     val metadata: Set<String>? = null,
     val storeTag: Boolean = false,
 ) {
 
-    fun modify(version: String) = buildString {
+    public fun modify(version: String): String = buildString {
         val match = VERSION_REGEX.matchEntire(version)?.groups ?: return version
 
         when (bump) {
@@ -39,7 +39,7 @@ data class GitVersionModifierSpec(
         metadata?.forEach { append("+").append(it) } ?: append(match["metadata"]!!.value)
     }
 
-    override fun toString() = buildString {
+    override fun toString(): String = buildString {
         bump?.name?.lowercase()?.let(::append)
         labels?.ifEmpty { listOf("") }?.forEach { if (isNotEmpty()) append(','); append("label=").append(it) }
         metadata?.ifEmpty { listOf("") }?.forEach { if (isNotEmpty()) append(','); append("metadata=").append(it) }
@@ -48,14 +48,14 @@ data class GitVersionModifierSpec(
         }
     }
 
-    enum class Bump { MAJOR, MINOR, PATCH, BUILD }
+    public enum class Bump { MAJOR, MINOR, PATCH, BUILD }
 
-    companion object {
+    public companion object {
 
         private val VERSION_REGEX =
             "(?<version>(?<major>\\d+)\\.(?<minor>\\d+)(?:\\.(?<patch>\\d+)(?:\\.(?<build>\\d+))?)?)(?<labels>(?:-[0-9A-Za-z]+)*)(?<metadata>(?:\\+[0-9A-Za-z]+)*)$".toRegex()
 
-        fun parse(input: String): GitVersionModifierSpec {
+        public fun parse(input: String): GitVersionModifierSpec {
             var spec = GitVersionModifierSpec()
 
             for (part in input.split(',')) {

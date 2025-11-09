@@ -17,16 +17,16 @@ import org.gradle.process.ExecOperations
  * 2) If the current commit is not tagged, the version is the tag name of the latest tag reachable from the current commit suffixed with `-SNAPSHOT`.
  * 3) If there are no tags, the version is `0.1.0-SNAPSHOT` (configured through [GitVersionValueSource.Params.initialVersion]).
  */
-abstract class GitVersionValueSource @Inject constructor(
+public abstract class GitVersionValueSource @Inject constructor(
     private val execOperations: ExecOperations,
 ) : ValueSource<String, GitVersionValueSource.Params> {
     private val logger = Logging.getLogger(GitVersionValueSource::class.java)
 
     private val prefix by lazy { parameters.tagPrefix.getOrElse("") }
 
-    val modifier by lazy { GitVersionModifierSpec.parse(parameters.versionModifier.get()) }
+    public val modifier: GitVersionModifierSpec by lazy { GitVersionModifierSpec.parse(parameters.versionModifier.get()) }
 
-    val candidate: String by lazy {
+    public val candidate: String by lazy {
         with(parameters) {
             var snapshot = forceSnapshot.get()
             val tag = exactTag() ?: closestTag()?.also { snapshot = true }
@@ -52,20 +52,20 @@ abstract class GitVersionValueSource @Inject constructor(
     }
 
 
-    fun exactTag(tagPrefix: String = prefix) =
+    public fun exactTag(tagPrefix: String = prefix): String? =
         command("git", "describe", "--tags", "--match", "$tagPrefix*", "--exact-match")
 
-    fun closestTag(tagPrefix: String = prefix, warnIfMissing: Boolean = true) =
+    public fun closestTag(tagPrefix: String = prefix, warnIfMissing: Boolean = true): String? =
         command("git", "describe", "--tags", "--match", "$tagPrefix*", "--abbrev=0") {
             if (warnIfMissing) {
                 logger.warn("failed to compute git version (no tags yet?): $it")
             }
         }
 
-    fun tagsCount(tagPrefix: String = prefix): Int =
+    public fun tagsCount(tagPrefix: String = prefix): Int =
         command("git", "tag", "--merged", "HEAD", "$tagPrefix*")?.lines().orEmpty().count()
 
-    fun command(vararg args: String, onError: (String) -> Unit = {}): String? {
+    public fun command(vararg args: String, onError: (String) -> Unit = {}): String? {
         val stdout = ByteArrayOutputStream()
         val stderr = ByteArrayOutputStream()
         val exitValue = execOperations.exec {
@@ -83,19 +83,19 @@ abstract class GitVersionValueSource @Inject constructor(
         return null
     }
 
-    interface Params : ValueSourceParameters {
+    public interface Params : ValueSourceParameters {
 
-        val gitRoot: DirectoryProperty
+        public val gitRoot: DirectoryProperty
 
-        val tagPrefix: Property<String>
+        public val tagPrefix: Property<String>
 
-        val initialVersion: Property<String>
+        public val initialVersion: Property<String>
 
-        val forceSnapshot: Property<Boolean>
+        public val forceSnapshot: Property<Boolean>
 
-        val versionModifier: Property<String>
+        public val versionModifier: Property<String>
 
-        val versionProducer: Property<GitVersionProducer>
+        public val versionProducer: Property<GitVersionProducer>
 
     }
 

@@ -4,8 +4,8 @@ import java.io.Serializable
 import org.gradle.api.HasImplicitReceiver
 
 @HasImplicitReceiver
-fun interface GitVersionProducer : Serializable {
+public fun interface GitVersionProducer : Serializable {
 
-    fun produceVersion(source: GitVersionValueSource): String
+    public fun produceVersion(source: GitVersionValueSource): String
 
 }

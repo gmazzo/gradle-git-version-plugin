@@ -1,6 +1,6 @@
 [versions]
 java = "17"
-kotlin = "2.2.21"
+kotlin = "2.3.0"
 
 [libraries]
 junit-bom = { group = "org.junit", name = "junit-bom", version = "6.0.1" }

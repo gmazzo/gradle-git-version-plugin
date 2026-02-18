@@ -30,6 +30,6 @@ public abstract class GitVersionExtensionReadonly @Inject constructor(
     }
 
     final override fun toString(): String =
-        version.get().toString()
+        version.get()
 
 }

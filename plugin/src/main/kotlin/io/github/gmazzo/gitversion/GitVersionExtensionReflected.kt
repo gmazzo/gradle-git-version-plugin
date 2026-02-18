@@ -32,7 +32,7 @@ internal abstract class GitVersionExtensionReflected @Inject constructor(
 
     override val forWholeBuild = delegated(GitVersionExtension::forWholeBuild)
 
-    private inline fun <reified Type> delegated(
+    private inline fun <reified Type : Any> delegated(
         property: KProperty<Provider<Type>>,
     ): Property<Type> = try {
         delegate.javaClass

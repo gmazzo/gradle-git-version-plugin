@@ -1,10 +1,16 @@
 public abstract interface class io/github/gmazzo/gitversion/GitVersionExtension : io/github/gmazzo/gitversion/GitVersionExtensionReadonly {
 	public abstract fun getForWholeBuild ()Lorg/gradle/api/provider/Property;
+	public synthetic fun getForWholeBuild ()Lorg/gradle/api/provider/Provider;
 	public abstract fun getForceSnapshot ()Lorg/gradle/api/provider/Property;
+	public synthetic fun getForceSnapshot ()Lorg/gradle/api/provider/Provider;
 	public abstract fun getInitialVersion ()Lorg/gradle/api/provider/Property;
+	public synthetic fun getInitialVersion ()Lorg/gradle/api/provider/Provider;
 	public abstract fun getTagPrefix ()Lorg/gradle/api/provider/Property;
+	public synthetic fun getTagPrefix ()Lorg/gradle/api/provider/Provider;
 	public abstract fun getVersion ()Lorg/gradle/api/provider/Property;
+	public synthetic fun getVersion ()Lorg/gradle/api/provider/Provider;
 	public abstract fun getVersionModifier ()Lorg/gradle/api/provider/Property;
+	public synthetic fun getVersionModifier ()Lorg/gradle/api/provider/Provider;
 	public abstract fun getVersionProducer ()Lorg/gradle/api/provider/Property;
 	public abstract fun versionProducer (Lio/github/gmazzo/gitversion/GitVersionProducer;)V
 }

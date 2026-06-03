@@ -71,7 +71,7 @@ public class GitVersionPlugin @Inject constructor(
     private fun ExtensionAware.findOrCreateExtension(
         onCreate: GitVersionExtension.() -> Unit,
     ): GitVersionExtensionReadonly = when (val existing = findExtensionOnBuildHierarchy()) {
-        null -> extensions.create<GitVersionExtension>(EXTENSION_NAME).also(onCreate)
+        null -> extensions.create(GitVersionExtension::class, EXTENSION_NAME, GitVersionExtensionImpl::class).also(onCreate)
         else -> existing.also { extensions.add(EXTENSION_NAME, it) }
     }
 

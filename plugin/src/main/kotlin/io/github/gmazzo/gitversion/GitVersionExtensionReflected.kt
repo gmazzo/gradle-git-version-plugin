@@ -18,7 +18,7 @@ internal abstract class GitVersionExtensionReflected @Inject constructor(
     providers: ProviderFactory,
     private val objects: ObjectFactory,
     private val delegate: Any,
-) : GitVersionExtensionReadonly(providers) {
+) : GitVersionExtensionReadonlyImpl(providers) {
 
     override val tagPrefix = delegated(GitVersionExtension::tagPrefix)
 

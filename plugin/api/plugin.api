@@ -1,5 +1,4 @@
-public abstract class io/github/gmazzo/gitversion/GitVersionExtension : io/github/gmazzo/gitversion/GitVersionExtensionReadonly {
-	public fun <init> (Lorg/gradle/api/provider/ProviderFactory;)V
+public abstract interface class io/github/gmazzo/gitversion/GitVersionExtension : io/github/gmazzo/gitversion/GitVersionExtensionReadonly {
 	public abstract fun getForWholeBuild ()Lorg/gradle/api/provider/Property;
 	public abstract fun getForceSnapshot ()Lorg/gradle/api/provider/Property;
 	public abstract fun getInitialVersion ()Lorg/gradle/api/provider/Property;
@@ -7,19 +6,17 @@ public abstract class io/github/gmazzo/gitversion/GitVersionExtension : io/githu
 	public abstract fun getVersion ()Lorg/gradle/api/provider/Property;
 	public abstract fun getVersionModifier ()Lorg/gradle/api/provider/Property;
 	public abstract fun getVersionProducer ()Lorg/gradle/api/provider/Property;
-	public final fun versionProducer (Lio/github/gmazzo/gitversion/GitVersionProducer;)V
+	public abstract fun versionProducer (Lio/github/gmazzo/gitversion/GitVersionProducer;)V
 }
 
-public abstract class io/github/gmazzo/gitversion/GitVersionExtensionReadonly {
-	public fun <init> (Lorg/gradle/api/provider/ProviderFactory;)V
+public abstract interface class io/github/gmazzo/gitversion/GitVersionExtensionReadonly {
 	public abstract fun getForWholeBuild ()Lorg/gradle/api/provider/Provider;
 	public abstract fun getForceSnapshot ()Lorg/gradle/api/provider/Provider;
 	public abstract fun getInitialVersion ()Lorg/gradle/api/provider/Provider;
 	public abstract fun getTagPrefix ()Lorg/gradle/api/provider/Provider;
 	public abstract fun getVersion ()Lorg/gradle/api/provider/Provider;
 	public abstract fun getVersionModifier ()Lorg/gradle/api/provider/Provider;
-	public final fun provider (Lio/github/gmazzo/gitversion/GitVersionProducer;)Lorg/gradle/api/provider/Provider;
-	public final fun toString ()Ljava/lang/String;
+	public abstract fun provider (Lio/github/gmazzo/gitversion/GitVersionProducer;)Lorg/gradle/api/provider/Provider;
 }
 
 public final class io/github/gmazzo/gitversion/GitVersionModifierSpec {

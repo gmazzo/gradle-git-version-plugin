@@ -4,7 +4,9 @@ import javax.inject.Inject
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.ProviderFactory
 
-public interface GitVersionExtension : GitVersionExtensionReadonly {
+internal abstract class GitVersionExtensionImpl @Inject internal constructor(
+    providers: ProviderFactory,
+) : GitVersionExtension, GitVersionExtensionReadonlyImpl(providers) {
 
     abstract override val tagPrefix: Property<String>
 
@@ -14,9 +16,11 @@ public interface GitVersionExtension : GitVersionExtensionReadonly {
 
     abstract override val versionModifier: Property<String>
 
-    public val versionProducer: Property<GitVersionProducer>
+    abstract override val versionProducer: Property<GitVersionProducer>
 
-    public fun versionProducer(producer: GitVersionProducer)
+    override fun versionProducer(producer: GitVersionProducer) {
+        versionProducer.set(producer)
+    }
 
     abstract override val version: Property<String>
 

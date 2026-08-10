@@ -34,14 +34,17 @@ internal abstract class GitVersionExtensionReflected @Inject constructor(
 
     private inline fun <reified Type : Any> delegated(
         property: KProperty<Provider<Type>>,
-    ): Property<Type> = try {
-        delegate.javaClass
-            .getMethod(property.getter.javaMethod!!.name)
-            .invoke(delegate) as Property<Type>
+    ): Property<Type> = objects.property<Type>().apply {
+        value(try {
+            delegate.javaClass
+                .getMethod(property.getter.javaMethod!!.name)
+                .invoke(delegate) as Property<Type>
 
-    } catch (e: NoSuchMethodException) {
-        e.printStackTrace() // this may happen if different binary incompatible versions are loaded
-        objects.property<Type>()
+        } catch (e: NoSuchMethodException) {
+            e.printStackTrace() // this may happen if different binary incompatible versions are loaded
+            providers.provider { null }
+        })
+        disallowChanges()
     }
 
 }

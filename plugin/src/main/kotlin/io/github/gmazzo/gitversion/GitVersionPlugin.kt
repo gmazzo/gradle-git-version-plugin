@@ -1,31 +1,43 @@
 package io.github.gmazzo.gitversion
 
 import javax.inject.Inject
-import org.gradle.api.Action
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.configuration.BuildFeatures
 import org.gradle.api.initialization.Settings
 import org.gradle.api.internal.GradleInternal
 import org.gradle.api.invocation.Gradle
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.provider.ProviderFactory
+import org.gradle.kotlin.dsl.apply
 import org.gradle.kotlin.dsl.create
 import org.gradle.kotlin.dsl.newInstance
+import org.gradle.kotlin.dsl.registerIfAbsent
 
-public class GitVersionPlugin @Inject constructor(
+public class GitVersionPlugin @Inject internal constructor(
     private val objects: ObjectFactory,
     private val providers: ProviderFactory,
+    private val gradle: Gradle,
+    buildFeatures: BuildFeatures,
 ) : Plugin<Any> {
 
+    private val projectIsolation = buildFeatures.isolatedProjects.active.get()
+
+    @Suppress("UNCHECKED_CAST")
+    private val versionExtensions = with((gradle as GradleInternal).root.sharedServices) {
+        registrations.findByName("gitVersion")?.service ?:
+        registerIfAbsent("gitVersion", GitVersionBuildService::class)
+    }.get() as MutableMap<ExtensionAware, GitVersionExtensionReadonly>
+
     override fun apply(target: Any): Unit = when (target) {
-        is Project -> target.configure(target::allprojects)
-        is Settings -> target.configure(target.gradle::allprojects)
-        is Gradle -> target.configure(target::allprojects)
+        is Project -> target.configure()
+        is Settings -> target.configure()
+        is Gradle -> target.configure()
         else -> throw IllegalArgumentException("Unsupported target object: $target")
     }
 
-    private fun ExtensionAware.configure(onEachProject: (Action<Project>) -> Unit) {
+    private fun ExtensionAware.configure() {
         val extension = findOrCreateExtension extension@{
 
             tagPrefix
@@ -59,8 +71,21 @@ public class GitVersionPlugin @Inject constructor(
 
         propagateExtension(extension)
 
-        onEachProject {
+        if (this is Project) {
             version = extension
+
+            // propagate it to subprojects, if the build is not isolated
+            if (!projectIsolation) {
+                subprojects {
+                    apply<GitVersionPlugin>()
+                }
+            }
+
+        } else {
+            // propagate it to all projects
+            gradle.lifecycle.beforeProject {
+                apply<GitVersionPlugin>()
+            }
         }
     }
 
@@ -71,19 +96,22 @@ public class GitVersionPlugin @Inject constructor(
     private fun ExtensionAware.findOrCreateExtension(
         onCreate: GitVersionExtension.() -> Unit,
     ): GitVersionExtensionReadonly = when (val existing = findExtensionOnBuildHierarchy()) {
-        null -> extensions.create(GitVersionExtension::class, EXTENSION_NAME, GitVersionExtensionImpl::class).also(onCreate)
+        null -> extensions.create(GitVersionExtension::class, EXTENSION_NAME, GitVersionExtensionImpl::class)
+            .also { versionExtensions[this] = it }
+            .also(onCreate)
+
         else -> existing.also { extensions.add(EXTENSION_NAME, it) }
     }
 
     private fun ExtensionAware.findExtensionOnBuildHierarchy() = generateSequence(parent) { it.parent }
-        .mapNotNull { it.extensions.findByName(EXTENSION_NAME) }
+        .mapNotNull(versionExtensions::get)
         .map { objects.newInstance<GitVersionExtensionReflected>(providers, objects, it) }
         .firstOrNull()
 
     private val ExtensionAware.parent: ExtensionAware?
         get() = when (this) {
-            is Project -> parent ?: gradle
-            is Settings -> gradle
+            is Project -> parent ?: this@GitVersionPlugin.gradle
+            is Settings -> this@GitVersionPlugin.gradle
             is Gradle -> parent
             else -> throw IllegalArgumentException("Unsupported target object: $this")
         }
@@ -98,8 +126,12 @@ public class GitVersionPlugin @Inject constructor(
     }
 
     private fun Gradle.propagate(extension: GitVersionExtensionReadonly) = with((this as GradleInternal).root) {
-        extensions.findByName(EXTENSION_NAME) // it may exist already, even from another classpath
-            ?: extensions.add(EXTENSION_NAME, extension)
+        versionExtensions[this] = extension
+
+        if (!projectIsolation) {
+            extensions.findByName(EXTENSION_NAME) // it may exist already, even from another classpath
+                ?: extensions.add(EXTENSION_NAME, extension)
+        }
     }
 
     public companion object {

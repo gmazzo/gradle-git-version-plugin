@@ -1,13 +1,13 @@
 package io.github.gmazzo.gitversion
 
+import java.io.File
 import org.gradle.testkit.runner.GradleRunner
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
-import java.io.File
-import org.junit.jupiter.api.AfterAll
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class GitVersionPluginTest {
@@ -24,10 +24,12 @@ class GitVersionPluginTest {
         tempDir.walkTopDown().filter { it.isDirectory && it.name == ".git" }.forEach { it.deleteRecursively() }
     }
 
-    @ParameterizedTest(name = "{0}, {1}, {2}")
+    @ParameterizedTest(name = "isolatedProjects={0}, {1}, {2}, {3}")
     @MethodSource("testData")
-    fun `plugin can be applied in a simple project`(layout: BuildLayout, applyAt: ApplyAt, tags: Tags) =
-        runTest(layout, applyAt, tags) {
+    fun `plugin can be applied in a simple project`(isolatedProjects: Boolean, layout: BuildLayout, applyAt: ApplyAt, tags: Tags) =
+        runTest(if (isolatedProjects) "isolated" else "default", layout, applyAt, tags) {
+            val propagatedToChildren = !isolatedProjects || applyAt != ApplyAt.rootProject
+
             val expectedVersion = when (applyAt) {
                 ApplyAt.childProjects -> "unspecified"
                 else -> when (tags) {
@@ -51,8 +53,8 @@ class GitVersionPluginTest {
 
                     else -> mapOf(
                         "version.txt" to expectedVersion,
-                        "module1/version.txt" to expectedVersion,
-                        "module2/version.txt" to expectedVersion,
+                        "module1/version.txt" to if (propagatedToChildren) expectedVersion else "unspecified",
+                        "module2/version.txt" to if (propagatedToChildren) expectedVersion else "unspecified",
                     )
                 }
 
@@ -66,12 +68,12 @@ class GitVersionPluginTest {
 
                     else -> mapOf(
                         "version.txt" to expectedVersion,
-                        "module1/version.txt" to expectedVersion,
-                        "module2/version.txt" to expectedVersion,
+                        "module1/version.txt" to if (propagatedToChildren) expectedVersion else "unspecified",
+                        "module2/version.txt" to if (propagatedToChildren) expectedVersion else "unspecified",
                         "build-logic/version.txt" to expectedVersion,
                     )
                 }
-            }
+            }.toSortedMap()
 
             GradleRunner.create()
                 .withPluginClasspath()
@@ -79,6 +81,7 @@ class GitVersionPluginTest {
                 .withArguments(
                     listOfNotNull(
                         "-s",
+                        "--isolated-projects".takeIf { isolatedProjects },
                         "storeVersion",
                         "build-logic:storeVersion".takeIf { layout == BuildLayout.includedBuild }),
                 )
@@ -87,13 +90,14 @@ class GitVersionPluginTest {
 
             val actualVersions = rootDir.walkTopDown()
                 .filter { it.name == "version.txt" }
+                .sorted()
                 .associateBy({ it.toRelativeString(rootDir) }, { it.readText() })
 
             Assertions.assertEquals(expectedVersions, actualVersions)
         }
 
-    private fun runTest(layout: BuildLayout, applyAt: ApplyAt, tags: Tags, block: Scenario.() -> Unit) {
-        val rootDir = tempDir.resolve(layout.name).resolve(applyAt.name).resolve(tags.name)
+    private fun runTest(prefix: String, layout: BuildLayout, applyAt: ApplyAt, tags: Tags, block: Scenario.() -> Unit) {
+        val rootDir = tempDir.resolve(prefix).resolve(layout.name).resolve(applyAt.name).resolve(tags.name)
 
         rootDir.mkdirs()
         rootDir.command("git", "init")
@@ -125,12 +129,13 @@ class GitVersionPluginTest {
             if (layout == BuildLayout.includedBuild) appendText("includeBuild(\"build-logic\")\n")
             if (layout == BuildLayout.multiModule || layout == BuildLayout.includedBuild)
                 appendText("include(\"module1\", \"module2\")\n")
+
+            addStoreVersionTask()
         }
 
         rootDir.resolve("build.gradle").apply {
             if (applyAt == ApplyAt.rootProject) writeText("plugins { id(\"$gitVersionPlugin\") }\n\n")
             else createNewFile()
-            addStoreVersionTask()
         }
 
         if (layout == BuildLayout.includedBuild) {
@@ -148,11 +153,11 @@ class GitVersionPluginTest {
                 else createNewFile()
 
                 appendText("rootProject.name = \"build-logic\"\n\n")
+                addStoreVersionTask()
             }
             rootDir.resolve("build-logic/build.gradle").apply {
                 if (applyAt == ApplyAt.rootProject) writeText("plugins { id(\"$gitVersionPlugin\") }\n\n")
                 else createNewFile()
-                addStoreVersionTask()
             }
         }
 
@@ -193,7 +198,7 @@ class GitVersionPluginTest {
     private fun File.addStoreVersionTask() {
         appendText(
             $$"""
-            allprojects {
+            gradle.lifecycle.afterProject {
                 tasks.register("storeVersion") {
                     def versionFile = file("version.txt")
                     def version = "${project.version}"
@@ -207,9 +212,11 @@ class GitVersionPluginTest {
         )
     }
 
-    fun testData(): List<Array<*>> = BuildLayout.entries.flatMap { layout ->
-        ApplyAt.entries.flatMap { applyAt ->
-            Tags.entries.map { tags -> arrayOf(layout, applyAt, tags) }
+    fun testData(): List<Array<*>> = arrayOf(false, true).flatMap { isolatedProjects ->
+        BuildLayout.entries.flatMap { layout ->
+            ApplyAt.entries.flatMap { applyAt ->
+                Tags.entries.map { tags -> arrayOf<Any>(isolatedProjects, layout, applyAt, tags) }
+            }
         }
     }
 

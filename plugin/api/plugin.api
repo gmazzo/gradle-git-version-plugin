@@ -63,7 +63,6 @@ public final class io/github/gmazzo/gitversion/GitVersionModifierSpec$Companion 
 public final class io/github/gmazzo/gitversion/GitVersionPlugin : org/gradle/api/Plugin {
 	public static final field Companion Lio/github/gmazzo/gitversion/GitVersionPlugin$Companion;
 	public static final field EXTENSION_NAME Ljava/lang/String;
-	public fun <init> (Lorg/gradle/api/model/ObjectFactory;Lorg/gradle/api/provider/ProviderFactory;)V
 	public fun apply (Ljava/lang/Object;)V
 }
 

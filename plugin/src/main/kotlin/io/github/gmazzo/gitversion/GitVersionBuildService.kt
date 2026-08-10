@@ -7,4 +7,4 @@ import org.gradle.api.services.BuildServiceParameters
 
 internal abstract class GitVersionBuildService :
     BuildService<BuildServiceParameters.None>,
-    WeakHashMap<ExtensionAware, GitVersionExtensionReadonly>()
+    WeakHashMap<ExtensionAware, Lazy<GitVersionExtensionReadonly>>()

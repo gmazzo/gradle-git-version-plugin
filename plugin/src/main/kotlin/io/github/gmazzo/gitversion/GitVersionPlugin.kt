@@ -28,7 +28,7 @@ public class GitVersionPlugin @Inject internal constructor(
     private val versionExtensions = with((gradle as GradleInternal).root.sharedServices) {
         registrations.findByName("gitVersion")?.service ?:
         registerIfAbsent("gitVersion", GitVersionBuildService::class)
-    }.get() as MutableMap<ExtensionAware, GitVersionExtensionReadonly>
+    }.get() as MutableMap<ExtensionAware, Lazy<GitVersionExtensionReadonly>>
 
     override fun apply(target: Any): Unit = when (target) {
         is Project -> target.configure()
@@ -97,7 +97,7 @@ public class GitVersionPlugin @Inject internal constructor(
         onCreate: GitVersionExtension.() -> Unit,
     ): GitVersionExtensionReadonly = when (val existing = findExtensionOnBuildHierarchy()) {
         null -> extensions.create(GitVersionExtension::class, EXTENSION_NAME, GitVersionExtensionImpl::class)
-            .also { versionExtensions[this] = it }
+            .also { versionExtensions[this] = lazyOf(it) }
             .also(onCreate)
 
         else -> existing.also { extensions.add(EXTENSION_NAME, it) }
@@ -126,7 +126,7 @@ public class GitVersionPlugin @Inject internal constructor(
     }
 
     private fun Gradle.propagate(extension: GitVersionExtensionReadonly) = with((this as GradleInternal).root) {
-        versionExtensions[this] = extension
+        versionExtensions[this] = lazyOf(extension)
 
         if (!projectIsolation) {
             extensions.findByName(EXTENSION_NAME) // it may exist already, even from another classpath

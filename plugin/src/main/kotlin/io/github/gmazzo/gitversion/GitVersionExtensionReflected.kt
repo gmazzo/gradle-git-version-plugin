@@ -17,8 +17,10 @@ import org.gradle.kotlin.dsl.property
 internal abstract class GitVersionExtensionReflected @Inject constructor(
     providers: ProviderFactory,
     private val objects: ObjectFactory,
-    private val delegate: Any,
+    delegate: Lazy<GitVersionExtensionReadonly>,
 ) : GitVersionExtensionReadonlyImpl(providers) {
+
+    private val delegate: Any = delegate.value
 
     override val tagPrefix = delegated(GitVersionExtension::tagPrefix)
 

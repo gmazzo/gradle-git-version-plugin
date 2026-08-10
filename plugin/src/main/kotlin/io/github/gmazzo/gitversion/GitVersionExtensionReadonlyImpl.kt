@@ -6,7 +6,7 @@ import org.gradle.api.provider.ProviderFactory
 import org.gradle.kotlin.dsl.of
 
 internal abstract class GitVersionExtensionReadonlyImpl @Inject internal constructor(
-    private val providers: ProviderFactory,
+    protected val providers: ProviderFactory,
 ) : GitVersionExtensionReadonly {
 
     abstract override val tagPrefix: Provider<String>

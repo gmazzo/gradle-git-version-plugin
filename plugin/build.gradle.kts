@@ -1,5 +1,6 @@
 @file:OptIn(ExperimentalAbiValidation::class)
 
+import org.gradle.plugin.compatibility.compatibility
 import org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation
 
 plugins {
@@ -38,6 +39,12 @@ gradlePlugin {
             displayName = name
             implementationClass = "io.github.gmazzo.gitversion.GitVersionPlugin"
             description = project.description
+            compatibility {
+                features {
+                    configurationCache = true
+                    isolatedProjects = true
+                }
+            }
             tags.addAll("git", "version", "semver", "semantic", "versioning")
         }
     }

@@ -60,7 +60,7 @@ public class GitVersionPlugin @Inject internal constructor(
                 .finalizeValueOnRead()
 
             version
-                .convention(versionProducer.flatMap(::provider).orElse(provider(null)))
+                .convention(provider(versionProducer))
                 .finalizeValueOnRead()
 
             forWholeBuild

@@ -23,6 +23,7 @@ public abstract interface class io/github/gmazzo/gitversion/GitVersionExtensionR
 	public abstract fun getVersion ()Lorg/gradle/api/provider/Provider;
 	public abstract fun getVersionModifier ()Lorg/gradle/api/provider/Provider;
 	public abstract fun provider (Lio/github/gmazzo/gitversion/GitVersionProducer;)Lorg/gradle/api/provider/Provider;
+	public abstract fun provider (Lorg/gradle/api/provider/Provider;)Lorg/gradle/api/provider/Provider;
 }
 
 public final class io/github/gmazzo/gitversion/GitVersionModifierSpec {

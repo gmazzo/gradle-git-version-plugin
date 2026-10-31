@@ -21,4 +21,6 @@ public interface GitVersionExtensionReadonly {
 
     public fun provider(producer: GitVersionProducer?): Provider<String>
 
+    public fun provider(producer: Provider<GitVersionProducer>): Provider<String>
+
 }

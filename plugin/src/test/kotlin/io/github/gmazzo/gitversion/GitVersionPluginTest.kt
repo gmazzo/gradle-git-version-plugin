@@ -24,7 +24,7 @@ class GitVersionPluginTest {
         tempDir.walkTopDown().filter { it.isDirectory && it.name == ".git" }.forEach { it.deleteRecursively() }
     }
 
-    @ParameterizedTest(name = "isolatedProjects={0}, {1}, {2}, {3}")
+    @ParameterizedTest(name = "#{index}: isolatedProjects={0}, {1}, {2}, {3}")
     @MethodSource("testData")
     fun `plugin can be applied in a simple project`(isolatedProjects: Boolean, layout: BuildLayout, applyAt: ApplyAt, tags: Tags) =
         runTest(if (isolatedProjects) "isolated" else "default", layout, applyAt, tags) {
